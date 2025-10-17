@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas" width="1500" height="600" tabindex="0"></canvas>
+    <div id="hud" aria-live="polite">
+        <div class="hud-item">Turn: <span id="turnNumber">1</span></div>
+        <div class="hud-item">Actions: <span id="actionsLeft">0</span></div>
+        <button id="endTurnBtn" class="btn">End Turn</button>
+        <div class="hud-controls">
+            <input id="seedInput" class="seed-input" placeholder="seed (optional)" aria-label="seed input">
+            <button id="regenBtn" class="btn">Regenerate</button>
+            <button id="randomBtn" class="btn">Randomize</button>
+            <button id="toggleElevBtn" class="btn">Show Elevation</button>
+            <button id="toggleElevMapBtn" class="btn">Elevation Map</button>
+        </div>
+    </div>
+    <div id="legend" aria-hidden="false">
+        <div class="legend-item"><span class="swatch sw-grass"></span>Grasslands</div>
+        <div class="legend-item"><span class="swatch sw-forest"></span>Forest</div>
+        <div class="legend-item"><span class="swatch sw-mountain"></span>Mountains</div>
+        <div class="legend-item"><span class="swatch sw-river"></span>River</div>
+        <div class="legend-item"><span class="swatch sw-lake"></span>Lake</div>
+        <div class="legend-item"><span class="swatch sw-snow"></span>Snow</div>
+    </div>
+    <div id="startMenu" class="menu-overlay" role="dialog" aria-modal="true">
+        <div class="menu">
+            <h1 class="menu-title">Mi Juego</h1>
+            <p class="menu-sub">Presiona Start o Enter para comenzar</p>
+            <div class="menu-buttons">
+                <button id="startButton" class="btn primary">Start</button>
+                <button id="optionsButton" class="btn">Options</button>
+            </div>
+            <p class="menu-hint">Esc para volver al menú durante el juego</p>
+        </div>
+    </div>
+
+    <script src="ui.js" defer></script>
+    <script src="game.js" defer></script>
+</body>
+</html>
