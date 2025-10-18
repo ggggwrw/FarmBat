@@ -1,4 +1,4 @@
-/* Basic reset */
+/* Basico */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
 body { background: #111; color: #eee; display: flex; align-items: center; justify-content: center; }
@@ -17,7 +17,7 @@ body { background: #111; color: #eee; display: flex; align-items: center; justif
 
 @media (max-width: 420px) { .menu-title { font-size: 24px; } }
 
-/* Hidden state for when the menu is closed */
+/* Ocultar al cerrar el menu */
 .hidden { display: none !important; }
 
 /* HUD */
@@ -29,10 +29,10 @@ body { background: #111; color: #eee; display: flex; align-items: center; justif
 .seed-input { padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.35); color:#e6eef6; }
 .seed-input::placeholder { color:#9aa6b2; }
 
-/* Selection & grid helpers */
+/* Selección y ayuda */
 .tile-highlight { outline: 2px solid rgba(46,163,255,0.9); box-shadow: 0 3px 10px rgba(46,163,255,0.08); }
 
-/* Legend */
+/* Leyenda */
 #legend { position: fixed; right: 18px; top: 18px; background: rgba(0,0,0,0.45); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); z-index:30; color:#e6eef6; font-weight:600; }
 .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:13px; }
 .legend-item:last-child { margin-bottom:0; }
@@ -44,7 +44,7 @@ body { background: #111; color: #eee; display: flex; align-items: center; justif
 .sw-snow { background:#e9f6ff; }
 .sw-lake { background:#1b75d6; }
 
-/* Tuning sliders */
+/* Controles de ajuste */
 #tuning { color:#dce8f2; }
 #tuning input[type="range"] { width:140px; margin-left:8px; vertical-align: middle; }
 

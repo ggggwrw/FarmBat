@@ -1,7 +1,4 @@
-// UI and player logic moved out of game.js
-// Handles menu, HUD updates, unit state and related event listeners
-
-// DOM elements
+// ui.js - Manejo de la interfaz de usuario
 const turnNumberEl = document.getElementById('turnNumber');
 const actionsLeftEl = document.getElementById('actionsLeft');
 const endTurnBtn = document.getElementById('endTurnBtn');
@@ -10,11 +7,11 @@ const startMenu = document.getElementById('startMenu');
 const startButton = document.getElementById('startButton');
 const optionsButton = document.getElementById('optionsButton');
 
-// Player/unit state (global so game.js can draw it)
+// Lugar del jugador
 window.unit = window.unit || { x: 0, y: 0, actionsMax: 2, actionsLeft: 2, selected: false };
 const unit = window.unit;
 
-// Game running flag is defined in game.js; we reference it
+// Como iniciar y parar el juego
 function startGame() {
     if (window.gameRunning) return;
     window.gameRunning = true;
@@ -44,7 +41,7 @@ function updateHud() {
     if (actionsLeftEl) actionsLeftEl.textContent = unit.actionsLeft;
 }
 
-// End turn button
+// Fin del turno
 if (endTurnBtn) endTurnBtn.addEventListener('click', () => {
     unit.actionsLeft = unit.actionsMax;
     window.gameState = window.gameState || { turn: 1 };
@@ -53,21 +50,20 @@ if (endTurnBtn) endTurnBtn.addEventListener('click', () => {
     if (typeof render === 'function') render();
 });
 
-// Menu buttons
+// Botones del menu
 if (startButton) startButton.addEventListener('click', startGame);
 if (optionsButton) optionsButton.addEventListener('click', () => alert('Opciones - (placeholder)'));
 
-// Show menu when page loads
 window.addEventListener('load', () => { showMenu(); });
 
-// Expose functions for console
+// mostrar funciones globales
 window.showMenu = showMenu;
 window.hideMenu = hideMenu;
 window.startGame = startGame;
 window.stopGame = stopGame;
 window.updateHud = updateHud;
 
-// Wire simple click-to-select/move handling on canvas (uses unit) and start camera drag when appropriate
+// Si no uso unidad me puedo mover
 const canvas = document.getElementById('gameCanvas');
 let dragging = false;
 let dragStart = null;
@@ -89,8 +85,6 @@ if (canvas) {
             unit.selected = false;
             handled = true;
         }
-
-        // if click didn't select/move a unit, start dragging the camera
         if (!handled) {
             dragging = true;
             dragStart = { x: e.clientX, y: e.clientY, camX: window.camX || 0, camY: window.camY || 0 };
@@ -101,13 +95,13 @@ if (canvas) {
     });
 }
 
-    // Regenerate and Randomize buttons
+    // Regenerar y Randomizar botones
     const regenBtn = document.getElementById('regenBtn');
     const randomBtn = document.getElementById('randomBtn');
     const seedInput = document.getElementById('seedInput');
     if (regenBtn) regenBtn.addEventListener('click', () => { if (typeof window.regenerateMap === 'function') window.regenerateMap(seedInput?.value || undefined); });
     if (randomBtn) randomBtn.addEventListener('click', () => { const s = Math.floor(Math.random()*1000000); if (seedInput) seedInput.value = s; if (typeof window.regenerateMap === 'function') window.regenerateMap(s); });
-    // Elevation toggle
+    // Apagar
     const toggleElevBtn = document.getElementById('toggleElevBtn');
     window.showElevation = window.showElevation || false;
     if (toggleElevBtn) {
@@ -117,7 +111,7 @@ if (canvas) {
             if (typeof render === 'function') render();
         });
     }
-    // Elevation heatmap toggle
+    // Encender
     const toggleElevMapBtn = document.getElementById('toggleElevMapBtn');
     window.showElevationMap = window.showElevationMap || false;
     if (toggleElevMapBtn) {
@@ -128,7 +122,7 @@ if (canvas) {
         });
     }
 
-// Camera interaction: dragging, wheel zoom, arrow pan
+// Camara
 if (canvas) {
     window.addEventListener('mousemove', (e) => {
         if (!dragging || !dragStart) return;
@@ -142,7 +136,7 @@ if (canvas) {
 
     window.addEventListener('mouseup', () => { dragging = false; dragStart = null; });
 
-    // wheel zoom (zoom toward cursor)
+    // Zoom ruedita
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
@@ -151,7 +145,6 @@ if (canvas) {
         const before = (typeof screenToWorldFloat === 'function') ? screenToWorldFloat(mx, my) : { x: (mx + (window.camX||0)) / (BASE_TILE * (window.zoom || 1)), y: (my + (window.camY||0)) / (BASE_TILE * (window.zoom || 1)) };
         const delta = Math.sign(e.deltaY) * -0.1;
         window.zoom = Math.max(0.25, Math.min(3, (window.zoom || zoom) + delta));
-        // adjust cam so the same world point stays under cursor
         const tNew = tileSize();
         window.camX = Math.round(before.x * tNew - mx);
         window.camY = Math.round(before.y * tNew - my);
@@ -159,7 +152,6 @@ if (canvas) {
         if (typeof render === 'function') render();
     }, { passive: false });
 
-    // arrow keys pan
     window.addEventListener('keydown', (e) => {
         const step = tileSize();
         if (e.key === 'ArrowLeft') { window.camX = (window.camX || 0) - step; if (typeof clampCam==='function') clampCam(); if (typeof render==='function') render(); }

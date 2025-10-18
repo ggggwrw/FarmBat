@@ -1,32 +1,30 @@
-// Canvas and world/camera (use window.canvas if ui.js already declared it)
+// Canvas y contexto de dibujo
 const gameCanvas = window.canvas || document.getElementById('gameCanvas');
 const ctx = gameCanvas && gameCanvas.getContext ? gameCanvas.getContext('2d') : null;
 
-// World / camera
+// Mundo y Camara
 const BASE_TILE = 48; // base tile size in px
 var zoom = 1.0; // zoom factor (1.0 = 100%) - var so UI code can access it via window.zoom
 function tileSize() { return Math.max(6, Math.round(BASE_TILE * zoom)); }
 const MAP_W = 140;
 const MAP_H = 120;
 
-// expose map size constants for UI
+// tamaño del mapa expuesto para ui.js
 window.MAP_W = MAP_W;
 window.MAP_H = MAP_H;
 
-// game state (turn counter etc.)
+// contador de turnos
 window.gameState = window.gameState || { turn: 1 };
 
-// runtime globals (some were accidentally removed by a large edit)
+// Mapa y generación de semilla
 var seed = Math.floor(Math.random() * 1000000);
 var tiles = [];
-var camX = 0, camY = 0; // var so UI code can read/write window.camX/camY
+var camX = 0, camY = 0; 
 
-// Provide a default unit if ui.js hasn't defined one yet. ui.js will overwrite/expose its own unit.
+// Unidad del jugador
 window.unit = window.unit || { x: Math.floor(MAP_W/2), y: Math.floor(MAP_H/2), actionsMax: 2, actionsLeft: 2, selected: false };
 
-// interactive tuning settings were removed. Use tuned fixed defaults below.
-
-// simple biome color palette used by drawGrid
+// Paleta de colores
 const BIOMES = {
 	grassland: { color: '#7ec97c' },
 	forest:    { color: '#37622a' },
@@ -60,13 +58,13 @@ function clampCam() {
 	camY = Math.max(0, Math.min(camY, Math.max(0, hpx - gameCanvas.height)));
 }
 
-// expose camera and helper hooks to UI
+// Expone la camara y zoom para que ui.js pueda acceder a ellos
 window.camX = window.camX || camX;
 window.camY = window.camY || camY;
 window.zoom = window.zoom || zoom;
 window.tileSize = window.tileSize || tileSize;
 window.clampCam = window.clampCam || clampCam;
-// elevation overlay toggle
+
 window.showElevation = window.showElevation || false;
 
 function drawGrid() {
@@ -78,7 +76,7 @@ function drawGrid() {
 			const tile = tiles[x][y];
 			const p = worldToScreen(x, y);
 			const sx = p.x, sy = p.y;
-			// skip tiles outside view
+			// Culling fuera de pantalla
 			    if (!gameCanvas) continue;
 			    if (sx + t < 0 || sy + t < 0 || sx > gameCanvas.width || sy > gameCanvas.height) continue;
 
@@ -86,7 +84,7 @@ function drawGrid() {
 			ctx.fillStyle = biomeCol;
 			ctx.fillRect(sx, sy, t, t);
 
-			// draw rivers and lakes specially
+			// Agua: lagos y rios
 			if (tile && tile.lake) {
 				ctx.fillStyle = BIOMES.lake.color;
 				ctx.fillRect(sx, sy, t, t);
@@ -96,9 +94,8 @@ function drawGrid() {
 				ctx.fillRect(sx + (t - w) / 2, sy + Math.floor(t*0.1), w, Math.floor(t*0.8));
 			}
 
-			// elevation heatmap overlay
+			// Overlay de mapa de elevacion
 			if (window.showElevationMap && tile) {
-				// simple colormap: low = blue, mid = green, high = brown
 				const e = Math.max(0, Math.min(1, tile.elevation || 0));
 				let color;
 				if (e < 0.33) color = '#4f9cff';
@@ -110,7 +107,7 @@ function drawGrid() {
 				ctx.globalAlpha = 1.0;
 			}
 
-			// forest decoration
+			// Pinta árboles simples en bosque
 			if (tile && tile.biome === 'forest') {
 				ctx.fillStyle = 'rgba(6,45,17,0.9)';
 				const count = Math.max(1, Math.floor(t / 16));
@@ -121,11 +118,10 @@ function drawGrid() {
 				}
 			}
 
-			// subtle grid lines
 			ctx.strokeStyle = 'rgba(0,0,0,0.06)';
 			ctx.strokeRect(sx + 0.5, sy + 0.5, t-1, t-1);
 
-			// draw elevation value when requested (only if tile is large enough)
+			// Pinta la elevacion como texto
 			if (window.showElevation && tile && t >= 12) {
 				ctx.fillStyle = 'rgba(0,0,0,0.9)';
 				ctx.textAlign = 'center';
@@ -139,9 +135,8 @@ function drawGrid() {
  	}
  	}
  
-// Utility: shade hex color lighter/darker by amount (-255..255)
+// Sombreado de un color hexadecimal
 function shadeColor(hex, amount) {
-	// parse
 	const col = hex.replace('#','');
 	const num = parseInt(col,16);
 	let r = (num >> 16) + amount;
@@ -160,7 +155,6 @@ function drawUnit(u) {
 	const offset = (t - size) / 2;
 	ctx.fillStyle = '#f5d06b';
 	ctx.fillRect(p.x + offset, p.y + offset, size, size);
-	// draw selection
 	if (u.selected) {
 		ctx.strokeStyle = 'rgba(46,163,255,0.95)';
 		ctx.lineWidth = 3;
@@ -174,7 +168,7 @@ function render() {
 	drawUnit(window.unit || { x:0, y:0, selected:false });
 }
 
-// --- Biome generation functions ---
+// --- Funciones de generación de biomas ---
 
 function seededHash(x,y,seedVal){
 	let n = x * 374761393 + y * 668265263 + (seedVal || seed) * 2654435761;
@@ -186,7 +180,6 @@ function seededHash(x,y,seedVal){
 function lerp(a,b,t){ return a + (b-a) * t; }
 
 function smoothNoise(x,y,scale,seedVal){
-	// value noise with bilinear interpolation
 	const fx = x / scale;
 	const fy = y / scale;
 	const x0 = Math.floor(fx), x1 = x0 + 1;
@@ -215,21 +208,20 @@ function fractalNoise(x,y,octaves,baseScale,seedVal){
 	return v / max;
 }
 
+// Genera la elevacion y el bioma del mapa
 function generateMaps(){
 	tiles = Array.from({length: MAP_W}, () => Array.from({length: MAP_H}, () => null));
-	// generate elevation and moisture with stronger diversity
 	for (let x=0;x<MAP_W;x++){
 		for (let y=0;y<MAP_H;y++){
 			const nx = x / MAP_W - 0.5;
 			const ny = y / MAP_H - 0.5;
 			const dist = Math.sqrt(nx*nx + ny*ny);
-			// elevation: fractal noise with smaller base scale to create bigger features
+
 			let elevation = fractalNoise(x, y, 5, 12, seed + 10);
-			// stronger center bias and slight randomness so peaks are more pronounced
+
 			elevation = elevation * 0.8 + (1 - dist) * 0.5 + (seededHash(x,y,seed + 42)-0.5) * 0.08;
 			elevation = Math.max(0, Math.min(1, elevation));
 
-			// moisture: more variation and slightly higher baseline
 			let moisture = fractalNoise(x+200, y+200, 4, 18, seed + 77);
 			moisture = moisture * (1 - elevation * 0.45) + 0.06;
 			moisture = Math.max(0, Math.min(1, moisture));
@@ -239,15 +231,14 @@ function generateMaps(){
 	}
 
 
-	// D8 flow-direction + accumulation approach
-	// compute flow-to for each cell (8 neighbors) then accumulation
+	// Busca crear rios y lagos basados en elevacion y acumulacion de flujo
 	const dirs = [ [1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1] ];
 	const flowTo = Array.from({length: MAP_W}, () => Array.from({length: MAP_H}, () => null));
 	const accumulation = Array.from({length: MAP_W}, () => Array.from({length: MAP_H}, () => 1));
 	const cells = [];
 	for (let x=0;x<MAP_W;x++) for (let y=0;y<MAP_H;y++) cells.push({x,y,e: tiles[x][y].elevation});
 
-	// flow to lowest neighbor (or null if local minima)
+	// Trata de unirse a otros rios
 	for (const c of cells) {
 		let best = {e: tiles[c.x][c.y].elevation, nx: c.x, ny: c.y};
 		for (const [dx,dy] of dirs) {
@@ -258,31 +249,26 @@ function generateMaps(){
 		}
 		if (best.nx === c.x && best.ny === c.y) flowTo[c.x][c.y] = null; else flowTo[c.x][c.y] = {x: best.nx, y: best.ny};
 	}
-
-	// accumulate flow: process from high to low elevation
 	cells.sort((a,b) => b.e - a.e);
 	for (const c of cells) {
 		const f = flowTo[c.x][c.y];
 		if (f) accumulation[f.x][f.y] += accumulation[c.x][c.y];
 	}
 
-	// build upstream lists for sinks and basin collection
+	// Crea rios basado en acumulacion de flujo y crea lagos en sumideros
 	const flowFrom = Array.from({length: MAP_W}, () => Array.from({length: MAP_H}, () => []));
 	for (let x=0;x<MAP_W;x++) for (let y=0;y<MAP_H;y++) {
 		const f = flowTo[x][y];
 		if (f) flowFrom[f.x][f.y].push({x,y});
 	}
 
-	// detect sinks and create small lakes from upstream basin (bounded size)
+	// Crea agujeros pequeños de agua (lagos) en sumideros
 	const mapArea = MAP_W * MAP_H;
-	// fixed tuned multipliers (sliders removed)
-	// riverMult: higher -> more rivers; lakeMult: higher -> larger/more lakes; forestMult: higher -> easier forest
-	const riverMult = 1.0;   // baseline river density
-	const lakeMult = 0.6;    // reduce lake sizes compared to earlier default
-	const forestMult = 0.7;  // make forests somewhat rarer
-	// base lake area, scaled by lakeMult (higher = more lakes)
+	// Densidad mayor segun valores
+	const riverMult = 1.0;
+	const lakeMult = 0.6;
+	const forestMult = 0.8; 
 	const maxLakeArea = Math.max(1, Math.floor(mapArea * 0.0003 * lakeMult));
-	// require rim to be noticeably higher than sink to actually hold water
 	const rimTolerance = 0.02;
 	const visitedSink = new Set();
 
@@ -305,11 +291,11 @@ function generateMaps(){
 	}
 
 	for (let x=0;x<MAP_W;x++) for (let y=0;y<MAP_H;y++) {
-		if (flowTo[x][y] !== null) continue; // not a sink
+		if (flowTo[x][y] !== null) continue;
 		const key = x+','+y; if (visitedSink.has(key)) continue; visitedSink.add(key);
 		const basin = collectBasin(x,y);
-		if (!basin) continue; // too large
-		// compute rim min elevation
+		if (!basin) continue;
+
 		let rimMin = Infinity;
 		for (const cell of basin) {
 			for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
@@ -320,15 +306,11 @@ function generateMaps(){
 			}
 		}
 		const sinkElev = tiles[x][y].elevation;
-		// require the rim to be higher than the sink by rimTolerance
 		if (isFinite(rimMin) && rimMin - sinkElev > rimTolerance) {
 			for (const cell of basin) tiles[cell.x][cell.y].lake = true;
 		}
 	}
 
-	// mark river by accumulation threshold, but don't mark lake tiles as river
-	// scale by tuning slider (riverDensity higher => more rivers => lower threshold)
-	// accThreshold inversely proportional to riverMult: higher riverMult -> lower threshold -> more rivers
 	const accThreshold = Math.max(8, Math.floor((mapArea / 900) / Math.max(0.25, riverMult)));
 	for (let x=0;x<MAP_W;x++) for (let y=0;y<MAP_H;y++) {
 		if (tiles[x][y].lake) { tiles[x][y].river = false; continue; }
@@ -336,39 +318,37 @@ function generateMaps(){
 		else tiles[x][y].river = false;
 	}
 
-	// persist accumulation into tiles for debugging/tuning
+	// Acumulacion de flujo por casillas
 	for (let x=0;x<MAP_W;x++) for (let y=0;y<MAP_H;y++) {
 		tiles[x][y].flowAccum = accumulation[x][y];
 	}
 
-	// assign biomes with adjusted thresholds for more variety
-	// assign biomes based on explicit elevation bands (user-specified)
-	// user ranges:
-	// elevation < 0.31 => lake
-	// 0.31 <= elevation < 0.35 => river
-	// 0.35 <= elevation < 0.45 => grassland
-	// 0.45 <= elevation < 0.60 => forest
-	// 0.60 <= elevation < 0.70 => mountain
-	// elevation >= 0.70 => snow
+	// Rangos de elevacion:
+	// elevacion < 0.31 => lake
+	// 0.31 <= elevacion < 0.35 => river
+	// 0.35 <= elevacion < 0.45 => grassland
+	// 0.45 <= elevacion < 0.60 => forest
+	// 0.60 <= elevacion < 0.70 => mountain
+	// elevacion >= 0.70 => snow
 	for (let x=0;x<MAP_W;x++){
 		for (let y=0;y<MAP_H;y++){
 			const t = tiles[x][y];
 			const e = t.elevation;
-			// elevation-based lakes override other flags
+			// Lagos por elevacion
 			if (e < 0.31) {
 				t.lake = true;
 				t.river = false;
 				t.biome = 'lake';
 				continue;
 			}
-			// Rivers: either elevation band OR strong accumulation
+			// Rios por elevacion o acumulacion
 			if ((e >= 0.31 && e < 0.35) || (t.flowAccum && t.flowAccum >= accThreshold)) {
 				t.river = true;
 				t.lake = false;
 				t.biome = 'river';
 				continue;
 			}
-			// remaining bands
+			// Biomas restantes
 			if (e >= 0.35 && e < 0.45) { t.biome = 'grassland'; t.lake = false; t.river = false; continue; }
 			if (e >= 0.45 && e < 0.60) { t.biome = 'forest'; t.lake = false; t.river = false; continue; }
 			if (e >= 0.60 && e < 0.70) { t.biome = 'mountain'; t.lake = false; t.river = false; continue; }
@@ -377,7 +357,7 @@ function generateMaps(){
 		}
 	}
 
-	// seed additional forests near rivers and high-moisture areas
+	// Prioridad de creacion de bosque:
 	for (let x=0;x<MAP_W;x++){
 		for (let y=0;y<MAP_H;y++){
 			const t = tiles[x][y];
@@ -396,7 +376,7 @@ function generateMaps(){
 		}
 	}
 
-	// spread forests several passes
+	// Bosques que se expanden gradualmente
 	for (let iter = 0; iter < 5; iter++){
 		const changes = [];
 		for (let x=0;x<MAP_W;x++){
@@ -418,11 +398,11 @@ function generateMaps(){
 		for (const c of changes) tiles[c.x][c.y].biome = 'forest';
 	}
 
-	// snow expansion around peaks
+	// Expansion de nieve desde picos altos
 	for (let x=0;x<MAP_W;x++){
 		for (let y=0;y<MAP_H;y++){
 			const t = tiles[x][y];
-			// only convert the highest mountains to permanent snow (match initial snow cutoff)
+			// Poner nieve en picos altos
 			if (t.biome === 'mountain' && t.elevation > 0.86) t.biome = 'snow';
 			if (t.biome !== 'snow'){
 				let snowNeighbors = 0;
@@ -434,13 +414,12 @@ function generateMaps(){
 						if (tiles[nx][ny].biome === 'snow') snowNeighbors++;
 					}
 				}
-				// require higher elevation to spread snow to neighbors so mountains remain visible
 				if (snowNeighbors >= 2 && t.elevation > 0.72) t.biome = 'snow';
 			}
 		}
 	}
 
-	// log stats
+	// Log
 	(function logStats(){
 		let minE=1, maxE=0, sumE=0, minM=1, maxM=0, sumM=0;
 		const biomeCounts = { grassland:0, forest:0, mountain:0, lake:0, snow:0 };
@@ -468,9 +447,7 @@ function generateMaps(){
 		console.groupEnd();
 	})();
 }
-
-// generate maps initially
-// Expose regenerateMap and helpers for UI script to call
+// Regenerar el mapa con una semilla opcional
 function regenerateMap(newSeed) {
 	if (typeof newSeed !== 'undefined') seed = Number(newSeed) || seed;
 	console.log('Generating map with seed', seed);
@@ -478,17 +455,17 @@ function regenerateMap(newSeed) {
 	render();
 }
 
-// initial generation
+// inicializar el mapa
 regenerateMap(seed);
 
-// Expose for ui.js and console usage
+// Muestra ui.js que estas funciones existen
 window.regenerateMap = regenerateMap;
 
-// expose helpful functions for UI
+// Funciones de ayuda para consola
 window.computeMapStats = computeMapStats;
 window.sampleSeeds = sampleSeeds;
 
-// Helpers for tuning
+// Calculador de casillas
 function computeMapStats() {
 	if (!tiles || !tiles.length) return null;
 	const stats = { total: MAP_W*MAP_H, rivers:0, lakes:0, accumMin: Infinity, accumMax:0, accumSum:0 };
@@ -505,7 +482,7 @@ function computeMapStats() {
 	return stats;
 }
 
-// Run N samples (different random seeds) and print concise stats to console
+// Testeo de semillas
 function sampleSeeds(n=5) {
 	const start = seed;
 	console.group(`Sampling ${n} seeds starting from ${start}`);
@@ -517,7 +494,7 @@ function sampleSeeds(n=5) {
 		console.log('seed', s, 'rivers', st.rivers, 'lakes', st.lakes, 'accumMin/max/avg', st.accumMin, st.accumMax, st.accumAvg.toFixed(2));
 	}
 	console.groupEnd();
-	// restore seed and regenerate original map
+	// Regerar el mapa con la semilla original
 	seed = start;
 	generateMaps(); render();
 }
