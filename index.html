@@ -12,10 +12,11 @@
         <div class="hud-item">Turno: <span id="turnNumber">1</span></div>
         <div class="hud-item">Acciones: <span id="actionsLeft">0</span></div>
         <button id="endTurnBtn" class="btn">Terminar Turno</button>
-        <div class="hud-controls">
+            <div class="hud-controls">
             <input id="seedInput" class="seed-input" placeholder="semilla (opcional)" aria-label="seed input">
             <button id="regenBtn" class="btn">Regenerar</button>
             <button id="randomBtn" class="btn">Randomizar</button>
+            <button id="fitMapBtn" class="btn">Ajustar Mapa</button>
             <button id="toggleElevBtn" class="btn">Mostrar Elevación</button>
             <button id="toggleElevMapBtn" class="btn">Mostrar Mapa de Elevación</button>
         </div>
@@ -28,19 +29,46 @@
         <div class="legend-item"><span class="swatch sw-lake"></span>Lago</div>
         <div class="legend-item"><span class="swatch sw-snow"></span>Nieve</div>
     </div>
+
+    <!-- Independent Action Menu Layer (right side) -->
+    <div id="actionMenuLayer" aria-hidden="true">
+        <div class="action-panel">
+            <div class="action-panel-header">Acciones</div>
+            <div id="actionMenuContent">Selecciona una casilla en el mapa para ver acciones.</div>
+            <div style="margin-top:10px;text-align:right;"><button id="closeActionMenu" class="btn">Cerrar</button></div>
+        </div>
+    </div>
+    <div id="toast" aria-live="polite"></div>
     <div id="startMenu" class="menu-overlay" role="dialog" aria-modal="true">
-        <div class="menu">
+        <div class="menu" role="document">
             <h1 class="menu-title">Farmbat</h1>
-            <p class="menu-sub">Presiona Start o Enter para comenzar</p>
+            <p class="menu-sub">Elige el tipo de mundo y presiona "Iniciar" para comenzar</p>
+
+            <div class="world-selection">
+                <div class="world-grid" role="list">
+                    <button class="world-card" data-world="normal" role="listitem" aria-pressed="false">
+                        <img class="world-illustration" src="assets/ScreenShots/Normal.png" alt="Preview of Normal world">
+                        <div class="world-label">Normal</div>
+                        <div class="world-desc">Normal gameplay like Civ6 — Easy</div>
+                    </button>
+                    <button class="world-card" data-world="islands" role="listitem" aria-pressed="false">
+                        <img class="world-illustration" src="assets/ScreenShots/Island.png" alt="Preview of Islands">
+                        <div class="world-label">Islands</div>
+                        <div class="world-desc">Naval combat focused — Medium</div>
+                    </button>
+                </div>
+            </div>
+
             <div class="menu-buttons">
                 <button id="startButton" class="btn primary">Iniciar</button>
                 <button id="optionsButton" class="btn">Opciones</button>
             </div>
-            <p class="menu-hint">Esc para volver al menú durante el juego</p>
+            <p class="menu-hint">Usa teclado o ratón. Esc para volver al menú durante el juego</p>
         </div>
     </div>
 
     <script src="ui.js" defer></script>
+    <script src="map.js" defer></script>
     <script src="game.js" defer></script>
 </body>
 </html>

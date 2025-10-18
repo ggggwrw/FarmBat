@@ -6,6 +6,42 @@ const endTurnBtn = document.getElementById('endTurnBtn');
 const startMenu = document.getElementById('startMenu');
 const startButton = document.getElementById('startButton');
 const optionsButton = document.getElementById('optionsButton');
+const worldCards = Array.from(document.querySelectorAll('.world-card'));
+
+// default world type
+window.worldType = window.worldType || 'normal';
+
+function setSelectedWorld(card) {
+    if (!card) return;
+    worldCards.forEach(c => {
+        c.setAttribute('aria-pressed', 'false');
+    });
+    card.setAttribute('aria-pressed', 'true');
+    window.worldType = card.dataset.world;
+}
+
+// Debounced regenerate when selecting a preset so users get immediate feedback
+let _regenTimer = null;
+function scheduleRegenerate(delay = 250) {
+    if (typeof window.regenerateMap !== 'function') return;
+    if (_regenTimer) clearTimeout(_regenTimer);
+    _regenTimer = setTimeout(() => {
+        _regenTimer = null;
+        // regenerate with current seed input if provided
+        const s = seedInput?.value || undefined;
+        window.regenerateMap(s);
+    }, delay);
+}
+
+// Keyboard: navigate world cards with arrow keys when menu is visible
+function focusNextCard(offset) {
+    if (!worldCards.length) return;
+    const idx = worldCards.findIndex(c => c.getAttribute('aria-pressed') === 'true');
+    let next = 0;
+    if (idx >= 0) next = (idx + offset + worldCards.length) % worldCards.length;
+    worldCards[next].focus();
+    setSelectedWorld(worldCards[next]);
+}
 
 // Lugar del jugador
 window.unit = window.unit || { x: 0, y: 0, actionsMax: 2, actionsLeft: 2, selected: false };
@@ -54,7 +90,45 @@ if (endTurnBtn) endTurnBtn.addEventListener('click', () => {
 if (startButton) startButton.addEventListener('click', startGame);
 if (optionsButton) optionsButton.addEventListener('click', () => alert('Opciones - (placeholder)'));
 
+// world card click/focus handlers
+if (worldCards.length) {
+    worldCards.forEach(c => {
+        c.addEventListener('click', () => { setSelectedWorld(c); scheduleRegenerate(); });
+        c.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedWorld(c); }
+        });
+    });
+    // set default selected card matching window.worldType
+    const defaultCard = worldCards.find(c => c.dataset.world === window.worldType) || worldCards[0];
+    setSelectedWorld(defaultCard);
+}
+
 window.addEventListener('load', () => { showMenu(); });
+
+// Global key handling for menu navigation and quick start
+window.addEventListener('keydown', (e) => {
+    // If the menu is visible
+    if (startMenu && !startMenu.classList.contains('hidden')) {
+        if (e.key === 'Enter') {
+            // Enter starts the game (if focused on a card, ensure it's selected)
+            const active = document.activeElement;
+            if (active && active.classList && active.classList.contains('world-card')) setSelectedWorld(active);
+            // regenerate map for selected preset then start (small delay)
+            if (typeof window.regenerateMap === 'function') {
+                window.regenerateMap(seedInput?.value || undefined);
+                setTimeout(() => startGame(), 150);
+            } else {
+                startGame();
+            }
+        }
+        if (e.key === 'ArrowRight') { focusNextCard(1); }
+        if (e.key === 'ArrowLeft') { focusNextCard(-1); }
+        if (e.key === 'Escape') { /* already at menu */ }
+    } else {
+        // If in-game, Esc should open menu
+        if (e.key === 'Escape') showMenu();
+    }
+});
 
 // mostrar funciones globales
 window.showMenu = showMenu;
@@ -69,6 +143,14 @@ let dragging = false;
 let dragStart = null;
 if (canvas) {
     canvas.addEventListener('mousedown', (e) => {
+        // If action panel is open, a left-click on the canvas should close it first
+        try {
+            if (e.button === 0 && actionMenuLayer && actionMenuLayer.classList && actionMenuLayer.classList.contains('open')) {
+                closeActionMenu();
+            }
+        } catch (err) {
+            // ignore if variables not yet ready
+        }
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -93,14 +175,26 @@ if (canvas) {
         updateHud();
         if (typeof render === 'function') render();
     });
+
+    // Open action menu when right-clicking or ctrl+click on a tile
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const w = (typeof screenToWorld === 'function') ? screenToWorld(x,y) : {x: Math.floor(x/48), y: Math.floor(y/48)};
+        openActionMenuForTile(w.x, w.y);
+    });
 }
 
     // Regenerar y Randomizar botones
     const regenBtn = document.getElementById('regenBtn');
     const randomBtn = document.getElementById('randomBtn');
     const seedInput = document.getElementById('seedInput');
+    const fitMapBtn = document.getElementById('fitMapBtn');
     if (regenBtn) regenBtn.addEventListener('click', () => { if (typeof window.regenerateMap === 'function') window.regenerateMap(seedInput?.value || undefined); });
     if (randomBtn) randomBtn.addEventListener('click', () => { const s = Math.floor(Math.random()*1000000); if (seedInput) seedInput.value = s; if (typeof window.regenerateMap === 'function') window.regenerateMap(s); });
+    if (fitMapBtn) fitMapBtn.addEventListener('click', () => { if (typeof window.fitMap === 'function') window.fitMap(); });
     // Apagar
     const toggleElevBtn = document.getElementById('toggleElevBtn');
     window.showElevation = window.showElevation || false;
@@ -121,6 +215,88 @@ if (canvas) {
             if (typeof render === 'function') render();
         });
     }
+
+// Action menu element references
+const actionMenuLayer = document.getElementById('actionMenuLayer');
+const actionMenuContent = document.getElementById('actionMenuContent');
+const closeActionMenuBtn = document.getElementById('closeActionMenu');
+const toastEl = document.getElementById('toast');
+
+// Focus trap state
+let _previousFocus = null;
+let _focusTrapHandler = null;
+function openActionMenuForTile(wx, wy) {
+    if (!actionMenuLayer || !actionMenuContent) { console.warn('action menu elements missing'); return; }
+    console.debug('openActionMenuForTile', wx, wy);
+    const t = (typeof tiles !== 'undefined' && tiles && tiles[wx] && tiles[wx][wy]) ? tiles[wx][wy] : null;
+    actionMenuContent.innerHTML = `<div><strong>Casilla:</strong> ${wx}, ${wy}</div><div><strong>Biome:</strong> ${t ? t.biome : 'N/A'}</div>`;
+    const moveBtn = document.createElement('button');
+    moveBtn.className = 'btn';
+    moveBtn.textContent = 'Mover unidad aquí';
+    moveBtn.addEventListener('click', () => {
+        if (!window.unit) return;
+        window.unit.x = Math.max(0, Math.min((window.MAP_W||0)-1, wx));
+        window.unit.y = Math.max(0, Math.min((window.MAP_H||0)-1, wy));
+        window.unit.selected = false;
+        if (typeof render === 'function') render();
+        // show success toast and auto-close
+        showToast('Unidad movida');
+        setTimeout(() => closeActionMenu(), 300);
+    });
+    actionMenuContent.appendChild(moveBtn);
+    // Ensure any previous hidden display is cleared and trigger CSS transition reliably
+    actionMenuLayer.style.display = 'flex';
+    // force reflow
+    /* eslint-disable no-unused-expressions */
+    void actionMenuLayer.offsetWidth;
+    /* eslint-enable no-unused-expressions */
+    actionMenuLayer.classList.add('open');
+    actionMenuLayer.setAttribute('aria-hidden', 'false');
+    // focus trap: remember previous focus and move focus to first focusable inside panel
+    _previousFocus = document.activeElement;
+    const focusables = actionMenuLayer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusables && focusables.length) {
+        focusables[0].focus();
+    }
+    // trap tab
+    _focusTrapHandler = function(e) {
+        if (e.key === 'Escape') { closeActionMenu(); return; }
+        if (e.key !== 'Tab') return;
+        const list = Array.from(actionMenuLayer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el=>!el.disabled);
+        if (!list.length) return;
+        const first = list[0];
+        const last = list[list.length-1];
+        if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    };
+    window.addEventListener('keydown', _focusTrapHandler);
+}
+function closeActionMenu() {
+    if (!actionMenuLayer) return;
+    actionMenuLayer.classList.remove('open');
+    actionMenuLayer.setAttribute('aria-hidden', 'true');
+    // After transition completes, hide the element to keep layout clean
+    const onEnd = (ev) => {
+        if (ev && ev.target !== actionMenuLayer) return;
+        actionMenuLayer.style.display = '';
+        actionMenuLayer.removeEventListener('transitionend', onEnd);
+    };
+    actionMenuLayer.addEventListener('transitionend', onEnd);
+    // remove focus trap and restore focus
+    if (_focusTrapHandler) { window.removeEventListener('keydown', _focusTrapHandler); _focusTrapHandler = null; }
+    if (_previousFocus && typeof _previousFocus.focus === 'function') { _previousFocus.focus(); _previousFocus = null; }
+}
+if (closeActionMenuBtn) closeActionMenuBtn.addEventListener('click', closeActionMenu);
+
+function showToast(text, ms = 1600) {
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.classList.add('show');
+    setTimeout(() => { toastEl.classList.remove('show'); }, ms);
+}
 
 // Camara
 if (canvas) {
