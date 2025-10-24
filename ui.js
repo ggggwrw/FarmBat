@@ -6,6 +6,7 @@ const endTurnBtn = document.getElementById('endTurnBtn');
 const startMenu = document.getElementById('startMenu');
 const startButton = document.getElementById('startButton');
 const optionsButton = document.getElementById('optionsButton');
+const mapEditorButton = document.getElementById('mapEditorButton');
 const worldCards = Array.from(document.querySelectorAll('.world-card'));
 
 // default world type
@@ -89,6 +90,9 @@ if (endTurnBtn) endTurnBtn.addEventListener('click', () => {
 // Botones del menu
 if (startButton) startButton.addEventListener('click', startGame);
 if (optionsButton) optionsButton.addEventListener('click', () => alert('Opciones - (placeholder)'));
+if (mapEditorButton) mapEditorButton.addEventListener('click', () => {
+    window.location.href = 'map-editor.html';
+});
 
 // world card click/focus handlers
 if (worldCards.length) {
@@ -152,25 +156,28 @@ if (canvas) {
             // ignore if variables not yet ready
         }
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const w = (typeof screenToWorld === 'function') ? screenToWorld(x,y) : {x: Math.floor(x/48), y: Math.floor(y/48)};
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const w = (typeof screenToWorld === 'function') ? screenToWorld(x,y) : {x: Math.floor(x/48), y: Math.floor(y/48)};
 
-        let handled = false;
-        if (w.x === unit.x && w.y === unit.y) {
-            unit.selected = !unit.selected;
-            handled = true;
-        } else if (unit.selected && unit.actionsLeft > 0) {
-            unit.x = Math.max(0, Math.min((window.MAP_W||0)-1, w.x));
-            unit.y = Math.max(0, Math.min((window.MAP_H||0)-1, w.y));
-            unit.actionsLeft -= 1;
-            unit.selected = false;
-            handled = true;
-        }
-        if (!handled) {
-            dragging = true;
-            dragStart = { x: e.clientX, y: e.clientY, camX: window.camX || 0, camY: window.camY || 0 };
-        }
+            // Only handle selection/move/drag on left mouse button to avoid moving on right-click
+            if (e.button === 0) {
+                let handled = false;
+                if (w.x === unit.x && w.y === unit.y) {
+                    unit.selected = !unit.selected;
+                    handled = true;
+                } else if (unit.selected && unit.actionsLeft > 0) {
+                    unit.x = Math.max(0, Math.min((window.MAP_W||0)-1, w.x));
+                    unit.y = Math.max(0, Math.min((window.MAP_H||0)-1, w.y));
+                    unit.actionsLeft -= 1;
+                    unit.selected = false;
+                    handled = true;
+                }
+                if (!handled) {
+                    dragging = true;
+                    dragStart = { x: e.clientX, y: e.clientY, camX: window.camX || 0, camY: window.camY || 0 };
+                }
+            }
 
         updateHud();
         if (typeof render === 'function') render();
@@ -192,9 +199,48 @@ if (canvas) {
     const randomBtn = document.getElementById('randomBtn');
     const seedInput = document.getElementById('seedInput');
     const fitMapBtn = document.getElementById('fitMapBtn');
+    const importMapGameBtn = document.getElementById('importMapGameBtn');
+    const importMapGameFile = document.getElementById('importMapGameFile');
+    const exportImageBtn = document.getElementById('exportImageBtn');
     if (regenBtn) regenBtn.addEventListener('click', () => { if (typeof window.regenerateMap === 'function') window.regenerateMap(seedInput?.value || undefined); });
     if (randomBtn) randomBtn.addEventListener('click', () => { const s = Math.floor(Math.random()*1000000); if (seedInput) seedInput.value = s; if (typeof window.regenerateMap === 'function') window.regenerateMap(s); });
     if (fitMapBtn) fitMapBtn.addEventListener('click', () => { if (typeof window.fitMap === 'function') window.fitMap(); });
+    if (importMapGameBtn && importMapGameFile) {
+        importMapGameBtn.addEventListener('click', ()=> importMapGameFile.click());
+        importMapGameFile.addEventListener('change', async (e)=>{
+            const f = e.target.files && e.target.files[0];
+            if (!f) return;
+            try {
+                const text = await f.text();
+                const data = JSON.parse(text);
+                if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('Expected 2D array');
+                // assign to global tiles if available
+                if (typeof window.tiles !== 'undefined') {
+                    const w = data.length, h = data[0].length;
+                    if (w !== (window.MAP_W||0) || h !== (window.MAP_H||0)) {
+                        alert(`El tamaño del mapa (${w}x${h}) no coincide con el juego (${window.MAP_W}x${window.MAP_H}).`);
+                    } else {
+                        window.tiles = data;
+                        if (typeof render === 'function') render();
+                    }
+                }
+            } catch (err) {
+                alert('JSON de mapa inválido');
+            } finally {
+                importMapGameFile.value = '';
+            }
+        });
+    }
+    if (exportImageBtn) {
+        exportImageBtn.addEventListener('click', () => {
+            let t = 8;
+            try {
+                const ans = prompt('Tamaño de tile (px) para exportar? (4-64)', '8');
+                if (ans !== null) t = Math.max(4, Math.min(64, parseInt(ans, 10) || 8));
+            } catch (e) { /* ignore */ }
+            if (typeof window.exportMapImage === 'function') window.exportMapImage({ tileSize: t });
+        });
+    }
     // Apagar
     const toggleElevBtn = document.getElementById('toggleElevBtn');
     window.showElevation = window.showElevation || false;
@@ -231,19 +277,92 @@ function openActionMenuForTile(wx, wy) {
     const t = (typeof tiles !== 'undefined' && tiles && tiles[wx] && tiles[wx][wy]) ? tiles[wx][wy] : null;
     actionMenuContent.innerHTML = `<div><strong>Casilla:</strong> ${wx}, ${wy}</div><div><strong>Biome:</strong> ${t ? t.biome : 'N/A'}</div>`;
     const moveBtn = document.createElement('button');
-    moveBtn.className = 'btn';
-    moveBtn.textContent = 'Mover unidad aquí';
+    moveBtn.className = 'btn action-move-btn';
+    moveBtn.textContent = 'Mover';
     moveBtn.addEventListener('click', () => {
         if (!window.unit) return;
         window.unit.x = Math.max(0, Math.min((window.MAP_W||0)-1, wx));
         window.unit.y = Math.max(0, Math.min((window.MAP_H||0)-1, wy));
         window.unit.selected = false;
+        // consume one action if available
+        window.unit.actionsLeft = Math.max(0, (window.unit.actionsLeft || 0) - 1);
+        if (typeof updateHud === 'function') updateHud();
         if (typeof render === 'function') render();
         // show success toast and auto-close
         showToast('Unidad movida');
         setTimeout(() => closeActionMenu(), 300);
     });
-    actionMenuContent.appendChild(moveBtn);
+    // disable the move button if no actions left
+    if ((window.unit && (window.unit.actionsLeft || 0) <= 0) || !window.unit) {
+        moveBtn.disabled = true;
+    }
+    // We'll group primary actions so we can hide them when opening the build submenu
+    const primaryActions = document.createElement('div');
+    primaryActions.className = 'primary-actions';
+    primaryActions.appendChild(moveBtn);
+    // Placeholder action buttons (no behavior yet)
+    const attackBtn = document.createElement('button');
+    attackBtn.className = 'btn';
+    attackBtn.textContent = 'Atacar';
+    attackBtn.disabled = true; // placeholder
+    primaryActions.appendChild(attackBtn);
+
+    const buildBtn = document.createElement('button');
+    buildBtn.className = 'btn';
+    buildBtn.textContent = 'Construir';
+    primaryActions.appendChild(buildBtn);
+
+    // Build options grid hidden initially
+    const buildGrid = document.createElement('div');
+    buildGrid.className = 'build-options';
+    buildGrid.style.display = 'none';
+    const buildOptions = [
+        { key: 'granja', label: 'Granja' },
+        { key: 'casa', label: 'Casa' },
+        { key: 'mina', label: 'Mina' },
+        { key: 'aserradero', label: 'Aserradero' },
+        { key: 'torre', label: 'Torre' },
+        { key: 'carretera', label: 'Carretera' },
+    ];
+    function canBuildHere() {
+        const tt = (typeof tiles !== 'undefined' && tiles && tiles[wx] && tiles[wx][wy]) ? tiles[wx][wy] : null;
+        if (!tt) return false;
+        if (tt.lake || tt.river) return false;
+        return true;
+    }
+    buildOptions.forEach(opt => {
+        const b = document.createElement('button');
+        b.className = 'btn';
+        b.textContent = opt.label;
+        b.addEventListener('click', () => {
+            if (!window.unit || (window.unit.actionsLeft || 0) <= 0) { showToast('Sin acciones'); return; }
+            if (!canBuildHere()) { showToast('No se puede construir aquí'); return; }
+            try {
+                if (typeof tiles !== 'undefined' && tiles && tiles[wx] && tiles[wx][wy]) {
+                    tiles[wx][wy].building = opt.key;
+                }
+                window.unit.actionsLeft = Math.max(0, (window.unit.actionsLeft || 0) - 1);
+                if (typeof updateHud === 'function') updateHud();
+                if (typeof render === 'function') render();
+                showToast('Construido: ' + opt.label);
+                setTimeout(() => closeActionMenu(), 250);
+            } catch (err) { console.error(err); }
+        });
+        buildGrid.appendChild(b);
+    });
+    buildBtn.addEventListener('click', () => {
+        // Hide main actions and show build options
+        primaryActions.style.display = 'none';
+        buildGrid.style.display = 'grid';
+    });
+    actionMenuContent.appendChild(buildGrid);
+
+    const produceBtn = document.createElement('button');
+    produceBtn.className = 'btn';
+    produceBtn.textContent = 'Producir';
+    produceBtn.disabled = true; // placeholder
+    primaryActions.appendChild(produceBtn);
+    actionMenuContent.appendChild(primaryActions);
     // Ensure any previous hidden display is cleared and trigger CSS transition reliably
     actionMenuLayer.style.display = 'flex';
     // force reflow
@@ -312,20 +431,21 @@ if (canvas) {
 
     window.addEventListener('mouseup', () => { dragging = false; dragStart = null; });
 
-    // Zoom ruedita
+    // Zoom ruedita (usar setZoom para mantener ancla y consistencia)
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
-        const before = (typeof screenToWorldFloat === 'function') ? screenToWorldFloat(mx, my) : { x: (mx + (window.camX||0)) / (BASE_TILE * (window.zoom || 1)), y: (my + (window.camY||0)) / (BASE_TILE * (window.zoom || 1)) };
         const delta = Math.sign(e.deltaY) * -0.1;
-        window.zoom = Math.max(0.25, Math.min(3, (window.zoom || zoom) + delta));
-        const tNew = tileSize();
-        window.camX = Math.round(before.x * tNew - mx);
-        window.camY = Math.round(before.y * tNew - my);
-        if (typeof clampCam === 'function') clampCam();
-        if (typeof render === 'function') render();
+        const target = (window.zoom || 1) + delta;
+        if (typeof window.setZoom === 'function') {
+            window.setZoom(target, mx, my);
+        } else {
+            // fallback (debería no usarse)
+            window.zoom = Math.max(0.25, Math.min(3, target));
+            if (typeof render === 'function') render();
+        }
     }, { passive: false });
 
     window.addEventListener('keydown', (e) => {

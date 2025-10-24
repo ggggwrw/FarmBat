@@ -74,6 +74,17 @@ body { background: #111; color: #eee; display: flex; align-items: center; justif
 #actionMenuLayer .action-panel { width: 100%; margin-right:12px; background: linear-gradient(180deg, rgba(8,12,18,0.95), rgba(10,14,22,0.95)); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 8px 40px rgba(0,0,0,0.6); color:#e6eef6; }
 #actionMenuLayer .action-panel-header { font-weight:800; margin-bottom:8px; }
 
+/* Nudge the primary move button slightly downward for visual balance */
+.action-panel .action-move-btn {
+	margin-top: 2px;
+}
+/* Button layout inside the action panel (only for the main actions row) */
+#actionMenuLayer .action-panel .primary-actions > .btn { display:inline-block; width: calc(50% - 10px); margin: 8px 5px; text-align: center; vertical-align: top; }
+
+/* Build options grid when clicking Construir */
+#actionMenuLayer .build-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 6px 5px 4px; }
+#actionMenuLayer .build-options .btn { display:block; width: 100%; margin: 0; }
+
 /* Toast message */
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; background: rgba(30,40,60,0.95); color:#e6f7ea; padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); box-shadow: 0 6px 18px rgba(0,0,0,0.6); z-index: 80; opacity: 0; pointer-events:none; transition: opacity 220ms ease; }
 #toast.show { opacity: 1; pointer-events:auto; }

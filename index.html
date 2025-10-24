@@ -5,21 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FarmBat</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Game layout similar to editor: left sidebar + canvas area */
+    #gameCanvasWrap { margin-left: 336px; padding-right: 18px; }
+    #gameSidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 300px; z-index: 40; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding: 18px; }
+    #gameSidebar .group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.45); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+        #gameSidebar .stack { display: flex; flex-direction: column; gap: 8px; }
+        #gameSidebar .label { color: #dce8f2; font-weight: 700; margin-right: 6px; }
+        #gameSidebar .kv { display:flex; gap:10px; align-items:center; }
+        #gameSidebar .kv .hud-item { background: transparent; border: none; padding: 0; }
+        .seed-input { width: 100%; }
+    @media (max-width: 900px) { #gameCanvasWrap { margin-left: 316px; } #gameSidebar { width: 280px; } }
+    </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="1500" height="600" tabindex="0"></canvas>
-    <div id="hud" aria-live="polite">
-        <div class="hud-item">Turno: <span id="turnNumber">1</span></div>
-        <div class="hud-item">Acciones: <span id="actionsLeft">0</span></div>
-        <button id="endTurnBtn" class="btn">Terminar Turno</button>
-            <div class="hud-controls">
+    <div id="gameSidebar" aria-live="polite">
+        <div class="group kv">
+            <div class="hud-item">Turno: <span id="turnNumber">1</span></div>
+            <div class="hud-item">Acciones: <span id="actionsLeft">0</span></div>
+            <button id="endTurnBtn" class="btn">Terminar Turno</button>
+        </div>
+        <div class="group stack">
             <input id="seedInput" class="seed-input" placeholder="semilla (opcional)" aria-label="seed input">
-            <button id="regenBtn" class="btn">Regenerar</button>
-            <button id="randomBtn" class="btn">Randomizar</button>
-            <button id="fitMapBtn" class="btn">Ajustar Mapa</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="regenBtn" class="btn">Regenerar</button>
+                <button id="randomBtn" class="btn">Randomizar</button>
+                <button id="fitMapBtn" class="btn">Ajustar Mapa</button>
+            </div>
+        </div>
+        <div class="group" style="flex-wrap:wrap; gap:8px;">
             <button id="toggleElevBtn" class="btn">Mostrar Elevación</button>
             <button id="toggleElevMapBtn" class="btn">Mostrar Mapa de Elevación</button>
         </div>
+        <div class="group" style="flex-wrap:wrap; gap:8px;">
+            <button id="importMapGameBtn" class="btn">Importar Mapa</button>
+            <input id="importMapGameFile" type="file" accept="application/json" style="display:none" />
+        </div>
+        <div class="group" style="flex-wrap:wrap; gap:8px;">
+            <button id="exportImageBtn" class="btn">Exportar Imagen</button>
+        </div>
+    </div>
+
+    <div id="gameCanvasWrap">
+        <canvas id="gameCanvas" width="1500" height="600" tabindex="0"></canvas>
     </div>
     <div id="legend" aria-hidden="false">
         <div class="legend-item"><span class="swatch sw-grass"></span>Praderas</div>
@@ -54,7 +82,12 @@
                     <button class="world-card" data-world="islands" role="listitem" aria-pressed="false">
                         <img class="world-illustration" src="assets/ScreenShots/Island.png" alt="Preview of Islands">
                         <div class="world-label">Islands</div>
-                        <div class="world-desc">Naval combat focused — Medium</div>
+                        <div class="world-desc">Combate cercano — Medium</div>
+                    </button>
+                    <button class="world-card" data-world="archipielago" role="listitem" aria-pressed="false">
+                        <img class="world-illustration" src="assets/ScreenShots/Archipielago.png" alt="Preview of Archipielago">
+                        <div class="world-label">Archipielago</div>
+                        <div class="world-desc">Asaltos navalaes — Hard</div>
                     </button>
                 </div>
             </div>
@@ -62,6 +95,7 @@
             <div class="menu-buttons">
                 <button id="startButton" class="btn primary">Iniciar</button>
                 <button id="optionsButton" class="btn">Opciones</button>
+                <button id="mapEditorButton" class="btn">Editor de Mapas</button>
             </div>
             <p class="menu-hint">Usa teclado o ratón. Esc para volver al menú durante el juego</p>
         </div>

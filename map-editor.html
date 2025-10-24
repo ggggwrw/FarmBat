@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmBat — Map Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Editor layout: left sidebar for tools, canvas on the right */
+        body { align-items: stretch; justify-content: stretch; }
+        #editorCanvas { background: #0b1220; display: block; border: 4px solid #222; border-radius: 8px; margin: 0; }
+        #editorSidebar { position: fixed; left: 18px; top: 18px; bottom: 18px; width: 300px; z-index: 40; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+        #editorSidebar .group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.45); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+        .select, .number, .range { padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.35); color: #e6eef6; }
+        .label { color: #dce8f2; font-weight: 600; margin-right: 4px; }
+        #editorTopRight { position: fixed; right: 18px; top: 18px; z-index: 40; }
+        #editorTopRight .group { background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+    #footerRight { position: fixed; right: 18px; bottom: 18px; z-index: 30; }
+    #footerRight .group { background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+    #editorSidebar .sidebar-tip { margin-top: auto; position: sticky; bottom: 0; background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+        /* Canvas container pushed to the right so it doesn't sit under the sidebar */
+        #canvasWrap { margin-left: 336px; /* sidebar 300 + gaps */ padding: 0 18px 0 0; }
+    </style>
+    <script>
+        // The editor is a separate page; avoid the game auto-menu by stubbing menu elements if ui.js is ever loaded accidentally.
+        window.addEventListener('DOMContentLoaded', () => { document.body.classList.add('editor-page'); });
+    </script>
+    <script src="map.js" defer></script>
+    <script src="map-editor.js" defer></script>
+    <!-- Note: we intentionally do not load game.js or ui.js here -->
+</head>
+<body>
+    <div id="editorSidebar" aria-live="polite">
+        <div class="group">
+            <span class="label">Preset</span>
+            <select id="presetSelect" class="select" aria-label="Preset select"></select>
+            <input id="seedInputEditor" class="number" placeholder="seed" aria-label="seed input">
+            <button id="regenEditorBtn" class="btn">Regenerar</button>
+            <button id="randomEditorBtn" class="btn">Random</button>
+        </div>
+        <div class="group">
+            <span class="label">Herramienta</span>
+            <select id="toolSelect" class="select" aria-label="tool select">
+                <option value="biome">Pintar Bioma</option>
+                <option value="elevate">Elevar Terreno</option>
+                <option value="river">Alternar Río</option>
+                <option value="lake">Alternar Lago</option>
+            </select>
+            <span class="label">Bioma</span>
+            <select id="biomeSelect" class="select" aria-label="biome select">
+                <option value="grassland">Grassland</option>
+                <option value="forest">Forest</option>
+                <option value="mountain">Mountain</option>
+                <option value="snow">Snow</option>
+                <option value="river">River</option>
+                <option value="lake">Lake</option>
+                <option value="beach">Beach</option>
+            </select>
+            <span class="label">Tamaño</span>
+            <input id="brushSize" type="range" min="1" max="8" step="1" value="2" class="range" aria-label="brush size">
+            <span class="label">Δ Elev</span>
+            <input id="elevDelta" type="range" min="0.01" max="0.2" step="0.01" value="0.05" class="range" aria-label="elevation delta">
+        </div>
+        <div class="group">
+            <button id="toggleElevMapEditorBtn" class="btn">Mapa de Elevación</button>
+            <button id="fitMapEditorBtn" class="btn">Ajustar Mapa</button>
+            <button id="recalcBiomesBtn" class="btn">Recalcular Biomas</button>
+            <button id="recalcHydroBtn" class="btn">Recalcular Ríos/Lagos</button>
+        </div>
+        <div class="group">
+            <button id="importPresetBtn" class="btn">Importar Preset</button>
+            <input id="importPresetFile" type="file" accept="application/json" style="display:none" />
+            <button id="importMapBtn" class="btn">Importar Mapa</button>
+            <input id="importMapFile" type="file" accept="application/json" style="display:none" />
+            <button id="exportMapBtn" class="btn">Exportar Mapa</button>
+        </div>
+        <div class="sidebar-tip">Consejo: Rueda para zoom. Arrastra con botón derecho para mover. Mantén Shift para pintar en línea recta.</div>
+    </div>
+
+    <div id="editorTopRight"><div class="group"><a href="index.html" class="btn">Volver al Juego</a></div></div>
+
+    <div id="canvasWrap">
+        <canvas id="editorCanvas" width="1400" height="780" tabindex="0" aria-label="Map editor canvas"></canvas>
+    </div>
+
+    <div id="footerRight"><div class="group">W: +Zoom | S: -Zoom | Arrows: Mover cámara</div></div>
+</body>
+</html>
