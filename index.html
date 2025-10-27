@@ -1,108 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmBat</title>
+    <title>FarmBat — Menú</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Game layout similar to editor: left sidebar + canvas area */
-    #gameCanvasWrap { margin-left: 336px; padding-right: 18px; }
-    #gameSidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 300px; z-index: 40; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding: 18px; }
-    #gameSidebar .group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.45); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
-        #gameSidebar .stack { display: flex; flex-direction: column; gap: 8px; }
-        #gameSidebar .label { color: #dce8f2; font-weight: 700; margin-right: 6px; }
-        #gameSidebar .kv { display:flex; gap:10px; align-items:center; }
-        #gameSidebar .kv .hud-item { background: transparent; border: none; padding: 0; }
-        .seed-input { width: 100%; }
-    @media (max-width: 900px) { #gameCanvasWrap { margin-left: 316px; } #gameSidebar { width: 280px; } }
-    </style>
 </head>
-<body>
-    <div id="gameSidebar" aria-live="polite">
-        <div class="group kv">
-            <div class="hud-item">Turno: <span id="turnNumber">1</span></div>
-            <div class="hud-item">Acciones: <span id="actionsLeft">0</span></div>
-            <button id="endTurnBtn" class="btn">Terminar Turno</button>
-        </div>
-        <div class="group stack">
-            <input id="seedInput" class="seed-input" placeholder="semilla (opcional)" aria-label="seed input">
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button id="regenBtn" class="btn">Regenerar</button>
-                <button id="randomBtn" class="btn">Randomizar</button>
-                <button id="fitMapBtn" class="btn">Ajustar Mapa</button>
+<body class="home-page">
+    <header class="topbar" role="banner">
+        <div class="brand">FarmBat</div>
+        <nav class="nav-actions" aria-label="Principal">
+            <a href="game.html" class="btn primary" id="playBtn">Jugar</a>
+            <a href="map-editor.html" class="btn" id="editorBtn">Editor de Mapas</a>
+        </nav>
+    </header>
+    <main class="home-wrap" aria-label="Información">
+        <section class="home-presets" aria-label="Presets">
+            <div class="world-grid" role="list">
+                <button class="world-card" data-world="islands" role="listitem" aria-pressed="false">
+                    <img class="world-illustration" src="assets/ScreenShots/Island.png" alt="Islands preview">
+                    <div class="world-label">Islands</div>
+                    <div class="world-desc">Mapa insular — combates navales</div>
+                </button>
+                <button class="world-card" data-world="normal" role="listitem" aria-pressed="true">
+                    <img class="world-illustration" src="assets/ScreenShots/Normal.png" alt="Normal preview">
+                    <div class="world-label">Normal</div>
+                    <div class="world-desc">Clásico, estilo Civ-like</div>
+                </button>
             </div>
-        </div>
-        <div class="group" style="flex-wrap:wrap; gap:8px;">
-            <button id="toggleElevBtn" class="btn">Mostrar Elevación</button>
-            <button id="toggleElevMapBtn" class="btn">Mostrar Mapa de Elevación</button>
-        </div>
-        <div class="group" style="flex-wrap:wrap; gap:8px;">
-            <button id="importMapGameBtn" class="btn">Importar Mapa</button>
-            <input id="importMapGameFile" type="file" accept="application/json" style="display:none" />
-        </div>
-        <div class="group" style="flex-wrap:wrap; gap:8px;">
-            <button id="exportImageBtn" class="btn">Exportar Imagen</button>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <div id="gameCanvasWrap">
-        <canvas id="gameCanvas" width="1500" height="600" tabindex="0"></canvas>
-    </div>
-    <div id="legend" aria-hidden="false">
-        <div class="legend-item"><span class="swatch sw-grass"></span>Praderas</div>
-        <div class="legend-item"><span class="swatch sw-forest"></span>Bosque</div>
-        <div class="legend-item"><span class="swatch sw-mountain"></span>Montañas</div>
-        <div class="legend-item"><span class="swatch sw-river"></span>Río</div>
-        <div class="legend-item"><span class="swatch sw-lake"></span>Lago</div>
-        <div class="legend-item"><span class="swatch sw-snow"></span>Nieve</div>
-    </div>
-
-    <!-- Independent Action Menu Layer (right side) -->
-    <div id="actionMenuLayer" aria-hidden="true">
-        <div class="action-panel">
-            <div class="action-panel-header">Acciones</div>
-            <div id="actionMenuContent">Selecciona una casilla en el mapa para ver acciones.</div>
-            <div style="margin-top:10px;text-align:right;"><button id="closeActionMenu" class="btn">Cerrar</button></div>
-        </div>
-    </div>
-    <div id="toast" aria-live="polite"></div>
-    <div id="startMenu" class="menu-overlay" role="dialog" aria-modal="true">
-        <div class="menu" role="document">
-            <h1 class="menu-title">Farmbat</h1>
-            <p class="menu-sub">Elige el tipo de mundo y presiona "Iniciar" para comenzar</p>
-
-            <div class="world-selection">
-                <div class="world-grid" role="list">
-                    <button class="world-card" data-world="normal" role="listitem" aria-pressed="false">
-                        <img class="world-illustration" src="assets/ScreenShots/Normal.png" alt="Preview of Normal world">
-                        <div class="world-label">Normal</div>
-                        <div class="world-desc">Normal gameplay like Civ6 — Easy</div>
-                    </button>
-                    <button class="world-card" data-world="islands" role="listitem" aria-pressed="false">
-                        <img class="world-illustration" src="assets/ScreenShots/Island.png" alt="Preview of Islands">
-                        <div class="world-label">Islands</div>
-                        <div class="world-desc">Combate cercano — Medium</div>
-                    </button>
-                    <button class="world-card" data-world="archipielago" role="listitem" aria-pressed="false">
-                        <img class="world-illustration" src="assets/ScreenShots/Archipielago.png" alt="Preview of Archipielago">
-                        <div class="world-label">Archipielago</div>
-                        <div class="world-desc">Asaltos navalaes — Hard</div>
-                    </button>
-                </div>
-            </div>
-
-            <div class="menu-buttons">
-                <button id="startButton" class="btn primary">Iniciar</button>
-                <button id="optionsButton" class="btn">Opciones</button>
-                <button id="mapEditorButton" class="btn">Editor de Mapas</button>
-            </div>
-            <p class="menu-hint">Usa teclado o ratón. Esc para volver al menú durante el juego</p>
-        </div>
-    </div>
-
-    <script src="ui.js" defer></script>
-    <script src="map.js" defer></script>
-    <script src="game.js" defer></script>
+    <script>
+        // Preset selection + Accesibilidad: Enter inicia el juego
+        window.addEventListener('DOMContentLoaded', () => {
+            const play = document.getElementById('playBtn');
+            const cards = Array.from(document.querySelectorAll('.world-card'));
+            let selected = 'normal';
+            function setSelected(world){
+                selected = world || 'normal';
+                cards.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.world === selected)));
+                // persist and update link
+                try { localStorage.setItem('worldType', selected); } catch(e){}
+                if (play) play.href = 'game.html?world=' + encodeURIComponent(selected);
+            }
+            cards.forEach(c => c.addEventListener('click', () => {
+                setSelected(c.dataset.world);
+                // Start the game immediately when a preset is clicked
+                if (play) play.click(); else window.location.href = 'game.html?world=' + encodeURIComponent(selected);
+            }));
+            // init from localStorage if available
+            try { const saved = localStorage.getItem('worldType'); if (saved) selected = saved; } catch(e){}
+            setSelected(selected);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    play?.click();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

@@ -62,9 +62,12 @@ function stopGame() {
 }
 
 function showMenu() {
-    if (startMenu) startMenu.classList.remove('hidden');
-    if (startButton) startButton.focus();
-    if (window.gameRunning) stopGame();
+    // Only show/stop if a start menu exists on this page
+    if (startMenu) {
+        startMenu.classList.remove('hidden');
+        if (startButton) startButton.focus();
+        if (window.gameRunning) stopGame();
+    }
 }
 
 function hideMenu() {
@@ -107,7 +110,8 @@ if (worldCards.length) {
     setSelectedWorld(defaultCard);
 }
 
-window.addEventListener('load', () => { showMenu(); });
+// Only open the start menu on load if it exists on this page
+window.addEventListener('load', () => { if (startMenu) showMenu(); });
 
 // Global key handling for menu navigation and quick start
 window.addEventListener('keydown', (e) => {
