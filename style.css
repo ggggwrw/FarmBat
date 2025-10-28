@@ -5,19 +5,20 @@ body { background: #111; color: #eee; display: flex; align-items: center; justif
 
 #gameCanvas { background: #0b1220; display: block; border: 4px solid #222; border-radius: 8px; }
 
-.menu-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
-.menu { background: linear-gradient(180deg,#0f1724,#071024); padding: 28px; border-radius: 12px; width: min(420px, 92%); text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.04); }
-.menu-title { font-size: 32px; margin-bottom: 8px; }
-.menu-sub { color: #9aa6b2; margin-bottom: 18px; }
-.menu-buttons { display:flex; gap: 12px; justify-content: center; margin-bottom: 12px; }
 .btn { cursor: pointer; padding: 10px 18px; border-radius: 8px; border: none; background: #23303b; color: #e6eef6; font-weight: 600; }
 .btn:hover { transform: translateY(-2px); }
 .btn.primary { background: linear-gradient(180deg,#2ea3ff,#1b6dd6); box-shadow: 0 6px 18px rgba(30,100,200,0.18); }
-.menu-hint { color: #6e7b85; font-size: 13px; }
 
-/* World selection inside the start menu */
-.world-selection { margin: 10px 0 16px; }
+/* World selection */
 .world-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+/* Place the Import card centered under the two presets (span all columns) */
+.world-grid .world-card[data-world="import"] {
+	grid-column: 1 / -1;
+	justify-self: center;
+	/* Make the box a bit wider while keeping it responsive */
+	width: 60%;
+	max-width: 720px;
+}
 .world-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); padding: 10px; border-radius: 10px; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; color:#e6eef6; font-weight:700; }
 .world-card .world-illustration { width:72px; height:48px; border-radius:8px; border:1px solid rgba(0,0,0,0.25); box-shadow: inset 0 -14px 30px rgba(0,0,0,0.12); display:block; }
 .world-card .world-illustration.img, .world-card .world-illustration[src] { object-fit: cover; }
@@ -51,26 +52,20 @@ body.home-page .world-card[aria-pressed="true"] {
 	background: rgba(255,255,255,0.02); 
 	border-color: rgba(255,255,255,0.03);
 }
-
-@media (max-width: 640px) { .world-grid { grid-template-columns: 1fr; } .menu { width: min(92%, 520px); } }
+@media (max-width: 640px) { .world-grid { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .world-grid { grid-template-columns: 1fr; gap:8px; } .world-card .world-illustration { width: 60px; height:40px; } }
-
-@media (max-width: 420px) { .menu-title { font-size: 24px; } }
 
 /* Ocultar al cerrar el menu */
 .hidden { display: none !important; }
 
 /* HUD */
-#hud { position: fixed; left: 18px; top: 18px; display:flex; gap:12px; align-items:center; z-index: 30; }
 .hud-item { background: rgba(0,0,0,0.45); padding:8px 10px; border-radius:8px; color:#dce8f2; font-weight:600; border:1px solid rgba(255,255,255,0.03); }
 #endTurnBtn { padding:8px 12px; border-radius:8px; }
-
-.hud-controls { display:flex; gap:8px; align-items:center; }
 .seed-input { padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.35); color:#e6eef6; }
 .seed-input::placeholder { color:#9aa6b2; }
 
 /* Selección y ayuda */
-.tile-highlight { outline: 2px solid rgba(46,163,255,0.9); box-shadow: 0 3px 10px rgba(46,163,255,0.08); }
+/* .tile-highlight no longer used */
 
 /* Leyenda */
 #legend { position: fixed; right: 18px; top: 18px; background: rgba(0,0,0,0.45); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03); z-index:30; color:#e6eef6; font-weight:600; }
@@ -84,10 +79,16 @@ body.home-page .world-card[aria-pressed="true"] {
 .sw-snow { background:#e9f6ff; }
 .sw-lake { background:#1b75d6; }
 .sw-beach { background:#f2e394; }
+.sw-lava { background:#ff5722; }
 
 /* Controles de ajuste */
-#tuning { color:#dce8f2; }
-#tuning input[type="range"] { width:140px; margin-left:8px; vertical-align: middle; }
+/* #tuning controls removed */
+
+/* Tiny icon buttons (for legend open/close) */
+.icon-btn { cursor: pointer; width: 26px; height: 26px; line-height: 26px; text-align: center; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: rgba(10,16,26,0.8); color: #e6eef6; font-weight: 900; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.icon-btn:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.5); background: rgba(14,20,30,0.92); }
+.legend-close { position: absolute; top: -10px; right: -10px; z-index: 2; }
+.legend-open { position: fixed; right: 18px; top: 18px; z-index: 31; }
 
 /* Independent Action Menu Layer */
 /* Action menu slides in from the right when .open is added */
@@ -116,13 +117,55 @@ body.home-page .world-card[aria-pressed="true"] {
 #actionMenuLayer .action-panel :is(button,a, input, select, textarea):focus { box-shadow: 0 0 0 3px rgba(46,163,255,0.18); border-radius:6px; }
 
 /* ---- Home page (index.html) ---- */
-body.home-page { display: block; align-items: stretch; justify-content: stretch; }
+/* Home page uses a column flex layout so the footer can stick to the bottom */
+body.home-page { display: flex; flex-direction: column; min-height: 100vh; align-items: stretch; justify-content: flex-start; }
 .topbar { position: sticky; top: 0; left: 0; right: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; background: linear-gradient(180deg, rgba(10,16,26,0.92), rgba(10,16,26,0.65)); border-bottom: 1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 24px rgba(0,0,0,0.35); z-index: 5; }
 .brand { font-weight: 800; letter-spacing: 0.4px; font-size: 18px; }
 .nav-actions { display:flex; gap: 10px; align-items:center; }
 .home-wrap { width: min(1100px, 96%); margin: 26px auto; }
-.home-info { margin-top: 6px; color: #cfd9e3; }
-.home-info h2 { font-size: 16px; margin-bottom: 8px; color: #e6eef6; }
-.home-info ul { list-style: disc; margin-left: 20px; line-height: 1.7; color: #9aa6b2; }
 @media (max-width: 540px) { .nav-actions .btn { padding: 8px 12px; } }
+
+/* Changelog box on home page */
+.home-changelog { margin-top: 16px; }
+.changelog-box { background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.35); color:#e6eef6; }
+.changelog-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: 6px; }
+.changelog-header h2 { font-size: 16px; margin: 0; letter-spacing: .2px; }
+.changelog-content { max-height: 220px; overflow: auto; padding-right: 6px; }
+.changelog-content ul { list-style: disc; margin: 8px 0 2px 20px; line-height: 1.7; color: #cfd9e3; }
+.changelog-content li { margin: 2px 0; }
+.changelog-content .chg-ver { color: #9ec5ff; font-weight: 700; }
+/* Expanded state shows full content */
+.changelog-box.expanded .changelog-content { max-height: none; }
+/* Small button variant for header controls */
+.btn.small { padding: 6px 10px; font-size: 12px; line-height: 1; }
+
+/* ---- Map editor (map-editor.html) ---- */
+body.editor-page { align-items: stretch; justify-content: stretch; }
+body.editor-page #editorCanvas { background: #0b1220; display: block; border: 4px solid #222; border-radius: 8px; margin: 0; }
+body.editor-page #editorSidebar { position: fixed; left: 18px; top: 18px; bottom: 18px; width: 300px; z-index: 40; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+body.editor-page #editorSidebar .group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.45); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+body.editor-page :is(.select, .number, .range) { padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.35); color: #e6eef6; }
+body.editor-page .label { color: #dce8f2; font-weight: 600; margin-right: 4px; }
+/* Slider rows: slider stretches, compact label to the right */
+body.editor-page #editorSidebar .slider-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; width: 100%; }
+body.editor-page #editorSidebar .slider-row .range { width: 100%; }
+body.editor-page #editorSidebar .label.small { font-size: 12px; color: #bcd1e4; margin: 0 0 0 4px; white-space: nowrap; }
+body.editor-page #editorTopRight { position: fixed; right: 18px; top: 18px; z-index: 40; }
+body.editor-page #editorTopRight .group { background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+body.editor-page #footerRight { position: fixed; right: 18px; bottom: 18px; z-index: 30; }
+body.editor-page #footerRight .group { background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+body.editor-page #editorSidebar .sidebar-tip { margin-top: auto; position: sticky; bottom: 0; background: rgba(0,0,0,0.45); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); }
+body.editor-page #canvasWrap { margin-left: 336px; /* sidebar 300 + gaps */ padding: 0 18px 0 0; }
+
+/* ---- Footer (home page) ---- */
+body.home-page .site-footer { 
+	margin-top: auto; 
+	width: 100%; 
+	text-align: center; 
+	padding: 14px 0; 
+	color: #cfd9e3; 
+	background: linear-gradient(180deg, rgba(10,16,26,0.65), rgba(10,16,26,0.45)); 
+	border-top: 1px solid rgba(255,255,255,0.06); 
+}
+body.home-page .site-footer p { margin: 0; }
 

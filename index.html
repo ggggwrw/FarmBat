@@ -12,8 +12,10 @@
         <nav class="nav-actions" aria-label="Principal">
             <a href="game.html" class="btn primary" id="playBtn">Jugar</a>
             <a href="map-editor.html" class="btn" id="editorBtn">Editor de Mapas</a>
+            <input id="importStartFile" type="file" accept="application/json" style="display:none" />
         </nav>
     </header>
+    
     <main class="home-wrap" aria-label="Información">
         <section class="home-presets" aria-label="Presets">
             <div class="world-grid" role="list">
@@ -27,29 +29,49 @@
                     <div class="world-label">Normal</div>
                     <div class="world-desc">Clásico, estilo Civ-like</div>
                 </button>
+                <button class="world-card" data-world="import" role="listitem" aria-pressed="false">
+                    <img class="world-illustration" src="assets/ScreenShots/Importar.png" alt="Importar mapa">
+                    <div class="world-label">Importar</div>
+                    <div class="world-desc">Cargar JSON y jugar</div>
+                </button>
+            </div>
+        </section>
+        <section class="home-changelog" aria-label="Changelog">
+            <div class="changelog-box" role="region" aria-labelledby="changelog-title">
+                <div class="changelog-header">
+                    <h2 id="changelog-title">Changelog</h2>
+                    <button class="btn small changelog-toggle" type="button" aria-expanded="false" aria-controls="changelog-content">Ver más</button>
+                </div>
+                <div id="changelog-content" class="changelog-content">
+                    <ul>
+                        <li><span class="chg-ver">v0.1.5</span> — Carga de mapas y correcta exportacion de estos.</li>
+                        <li><span class="chg-ver">v0.1.4</span> — Cambio del editor, mejora del menu y cambios visuales de las diferentes interfaces.</li>
+                    </ul>
+                </div>
             </div>
         </section>
     </main>
 
     <script>
-        // Preset selection + Accesibilidad: Enter inicia el juego
         window.addEventListener('DOMContentLoaded', () => {
             const play = document.getElementById('playBtn');
+            const importStartFile = document.getElementById('importStartFile');
             const cards = Array.from(document.querySelectorAll('.world-card'));
             let selected = 'normal';
             function setSelected(world){
                 selected = world || 'normal';
                 cards.forEach(c => c.setAttribute('aria-pressed', String(c.dataset.world === selected)));
-                // persist and update link
-                try { localStorage.setItem('worldType', selected); } catch(e){}
+                try { if (selected !== 'import') localStorage.setItem('worldType', selected); } catch(e){}
                 if (play) play.href = 'game.html?world=' + encodeURIComponent(selected);
             }
             cards.forEach(c => c.addEventListener('click', () => {
+                if (c.dataset.world === 'import') {
+                    importStartFile?.click();
+                    return;
+                }
                 setSelected(c.dataset.world);
-                // Start the game immediately when a preset is clicked
                 if (play) play.click(); else window.location.href = 'game.html?world=' + encodeURIComponent(selected);
             }));
-            // init from localStorage if available
             try { const saved = localStorage.getItem('worldType'); if (saved) selected = saved; } catch(e){}
             setSelected(selected);
             document.addEventListener('keydown', (e) => {
@@ -57,7 +79,55 @@
                     play?.click();
                 }
             });
+
+            // Changelog expand/collapse
+            const toggle = document.querySelector('.changelog-toggle');
+            const box = document.querySelector('.changelog-box');
+            if (toggle && box) {
+                toggle.addEventListener('click', () => {
+                    const expanded = box.classList.toggle('expanded');
+                    toggle.setAttribute('aria-expanded', String(expanded));
+                    toggle.textContent = expanded ? 'Ver menos' : 'Ver más';
+                });
+            }
+
+            // Import map and start playing
+            function handleImportedMapText(text){
+                try {
+                    const data = JSON.parse(text);
+                    if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('Formato inválido: se esperaba una matriz 2D');
+                    // store in sessionStorage (scoped to this tab) to be read by game.html
+                    try { sessionStorage.setItem('importedMap2D', JSON.stringify(data)); } catch (e) {
+                        alert('El mapa es demasiado grande para almacenarlo. Abre el juego y usa "Importar Mapa" desde el lateral.');
+                        return;
+                    }
+                    // navigate to game with a hint param
+                    const href = (play && play.href) ? play.href : ('game.html?world=' + encodeURIComponent(selected));
+                    const url = new URL(href, window.location.href);
+                    url.searchParams.set('map', 'imported');
+                    window.location.href = url.toString();
+                } catch (err) {
+                    console.error(err);
+                    alert('JSON inválido');
+                }
+            }
+            if (importStartFile){
+                importStartFile.addEventListener('change', async (e)=>{
+                    const f = e.target.files && e.target.files[0];
+                    if (!f) return;
+                    try {
+                        const text = await f.text();
+                        handleImportedMapText(text);
+                    } finally {
+                        importStartFile.value = '';
+                    }
+                });
+            }
         });
     </script>
+
+    <footer class="site-footer" role="contentinfo">
+        <p>&copy; 2025 FarmBat. Todos los derechos reservados.</p>
+    </footer>
 </body>
 </html>

@@ -6,6 +6,14 @@
     const canvas = document.getElementById('editorCanvas');
     const ctx = canvas.getContext('2d');
 
+    // Render scheduler to batch redraws to once per frame
+    let needsRender = false;
+    function queueRender(){
+        if (needsRender) return;
+        needsRender = true;
+        requestAnimationFrame(()=>{ needsRender = false; draw(); });
+    }
+
     // World size (reuse game's defaults)
     const MAP_W = 140;
     const MAP_H = 120;
@@ -56,6 +64,7 @@
         forest:    { color: '#37622a' },
         mountain:  { color: '#8b8b8b' },
         snow:      { color: '#ffffff' },
+        lava:      { color: '#ff4500' },
         river:     { color: '#8fd1ff' },
         lake:      { color: '#2a6fb0' },
         beach:     { color: '#f2e394' },
@@ -68,7 +77,7 @@
     const toolSelect = document.getElementById('toolSelect');
     const biomeSelect = document.getElementById('biomeSelect');
     const brushSizeInput = document.getElementById('brushSize');
-    const elevDeltaInput = document.getElementById('elevDelta');
+    // Button to toggle elevation overlay
     const toggleElevMapBtn = document.getElementById('toggleElevMapEditorBtn');
     const fitMapBtn = document.getElementById('fitMapEditorBtn');
     const recalcBiomesBtn = document.getElementById('recalcBiomesBtn');
@@ -121,7 +130,9 @@
         }
         // Hover brush preview overlay
         if (hoverTile){
-            const size = parseInt(brushSizeInput.value, 10) || 1;
+            let size = parseInt(brushSizeInput.value, 10);
+            if (Number.isNaN(size)) size = 1; // fallback if input empty/invalid
+            size = Math.max(0, size);
             ctx.save();
             ctx.globalAlpha = 0.22;
             ctx.fillStyle = '#2ea3ff';
@@ -141,7 +152,7 @@
         } else {
             tiles = Array.from({length: MAP_W}, ()=>Array.from({length: MAP_H}, ()=>({ elevation:0, moisture:0, biome:'grassland', river:false })));
         }
-        draw();
+        queueRender();
     }
 
     function fitMap(){
@@ -159,7 +170,7 @@
         camX = Math.round((totalW - canvas.width) / 2);
         camY = Math.round((totalH - canvas.height) / 2);
         clampCam();
-        draw();
+        queueRender();
     }
 
     // Painting tools
@@ -175,9 +186,32 @@
         }
     }
 
+    // Map a biome name to a representative elevation using current preset thresholds
+    function elevationForBiome(b){
+        const preset = (window.mapPresets && window.mapPresets[presetSelect.value]) || window.mapPresets?.normal;
+        const th = preset?.biomeThresholds || { lake: 0.31, beachRounded: 0.32, riverMin: 0.33, riverMax: 0.35, grassMin: 0.35, grassMax: 0.50, forestMin: 0.50, forestMax: 0.60, mountainMin: 0.60, mountainMax: 0.70, snowMin: 0.70 };
+        const mid = (a,b)=> (a + b) / 2;
+        let e;
+        switch (b){
+            case 'lake': e = Math.max(0, th.lake - 0.02); break;
+            case 'river': e = mid(th.riverMin ?? th.grassMin, th.riverMax ?? th.grassMin + 0.02); break;
+            case 'beach': e = th.beachRounded ?? mid(th.grassMin, th.grassMax); break;
+            case 'grassland': e = mid(th.grassMin, th.grassMax); break;
+            case 'forest': e = mid(th.forestMin, th.forestMax); break;
+            case 'mountain': e = mid(th.mountainMin, th.mountainMax); break;
+            case 'snow': e = Math.min(1, (th.snowMin ?? 0.7) + 0.05); break;
+            case 'lava': e = Math.min(1, (th.snowMin ?? 0.7) + 0.08); break;
+            default: e = mid(th.grassMin, th.grassMax); break;
+        }
+        if (!Number.isFinite(e)) e = 0.5;
+        return Math.max(0, Math.min(1, e));
+    }
+
     function doToolAt(wx, wy){
         const tool = toolSelect.value;
-        const size = parseInt(brushSizeInput.value, 10) || 1; // radius in tiles
+        let size = parseInt(brushSizeInput.value, 10); // radius in tiles
+        if (Number.isNaN(size)) size = 1;
+        size = Math.max(0, size);
         if (wx < 0 || wy < 0 || wx >= MAP_W || wy >= MAP_H) return;
         if (tool === 'biome'){
             const b = biomeSelect.value || 'grassland';
@@ -185,13 +219,8 @@
                 t.biome = b;
                 t.river = (b === 'river');
                 t.lake = (b === 'lake');
-            });
-        } else if (tool === 'elevate'){
-            const delta = parseFloat(elevDeltaInput.value || '0.05');
-            const add = !keys.altKey; // Add by default, hold Alt to subtract
-            const amount = add ? delta : -delta;
-            paintCircle(wx, wy, size, (x,y,t)=>{
-                t.elevation = Math.max(0, Math.min(1, (t.elevation || 0) + amount));
+                // Apply biome-appropriate elevation
+                t.elevation = elevationForBiome(b);
             });
         } else if (tool === 'river'){
             paintCircle(wx, wy, size, (x,y,t)=>{ t.river = !t.river; if (t.river) { t.lake = false; t.biome = 'river'; } });
@@ -199,7 +228,7 @@
             paintCircle(wx, wy, size, (x,y,t)=>{ t.lake = !t.lake; if (t.lake) { t.river = false; t.biome = 'lake'; } });
         }
     }
-    function applyTool(wx, wy){ doToolAt(wx, wy); draw(); }
+    function applyTool(wx, wy){ doToolAt(wx, wy); queueRender(); }
 
     function lineTiles(x0,y0,x1,y1, cb){
         let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
@@ -252,7 +281,7 @@
         if (draggingRight && dragStart){
             const dx = e.clientX - dragStart.x;
             const dy = e.clientY - dragStart.y;
-            camX = dragStart.camX - dx; camY = dragStart.camY - dy; clampCam(); draw();
+            camX = dragStart.camX - dx; camY = dragStart.camY - dy; clampCam(); queueRender();
         }
         if (draggingLeft){
             const { x, y } = getMouseCanvasPos(e);
@@ -260,7 +289,7 @@
             hoverTile = { x: w.x, y: w.y }; // update preview while painting
             if (keys.shift && lastPaintTile){
                 lineTiles(lastPaintTile.x, lastPaintTile.y, w.x, w.y, (lx,ly)=> doToolAt(lx,ly));
-                draw();
+                queueRender();
             } else {
                 applyTool(w.x, w.y);
             }
@@ -272,10 +301,10 @@
             if (w.x >= 0 && w.y >= 0 && w.x < MAP_W && w.y < MAP_H) {
                 hoverTile = { x: w.x, y: w.y };
             } else hoverTile = null;
-            draw();
+            queueRender();
         }
     });
-    canvas.addEventListener('mouseleave', ()=>{ hoverTile = null; draw(); });
+    canvas.addEventListener('mouseleave', ()=>{ hoverTile = null; queueRender(); });
     window.addEventListener('mouseup', ()=>{ draggingLeft = false; draggingRight = false; dragStart = null; lastPaintTile = null; });
     canvas.addEventListener('wheel', (e)=>{
         e.preventDefault();
@@ -287,18 +316,18 @@
         camX = Math.round(before.x * tNew - mx);
         camY = Math.round(before.y * tNew - my);
         clampCam();
-        draw();
+        queueRender();
     }, { passive: false });
     window.addEventListener('keydown', (e)=>{
         if (e.key === 'Shift') keys.shift = true;
         if (e.key === 'Alt') keys.altKey = true;
         const step = tileSize();
-        if (e.key === 'ArrowLeft'){ camX -= step; clampCam(); draw(); }
-        if (e.key === 'ArrowRight'){ camX += step; clampCam(); draw(); }
-        if (e.key === 'ArrowUp'){ camY -= step; clampCam(); draw(); }
-        if (e.key === 'ArrowDown'){ camY += step; clampCam(); draw(); }
-        if (e.key.toLowerCase() === 'w'){ zoom = Math.min(3, zoom + 0.1); clampCam(); draw(); }
-        if (e.key.toLowerCase() === 's'){ zoom = Math.max(0.25, zoom - 0.1); clampCam(); draw(); }
+        if (e.key === 'ArrowLeft'){ camX -= step; clampCam(); queueRender(); }
+        if (e.key === 'ArrowRight'){ camX += step; clampCam(); queueRender(); }
+        if (e.key === 'ArrowUp'){ camY -= step; clampCam(); queueRender(); }
+        if (e.key === 'ArrowDown'){ camY += step; clampCam(); queueRender(); }
+        if (e.key.toLowerCase() === 'w'){ zoom = Math.min(3, zoom + 0.1); clampCam(); queueRender(); }
+        if (e.key.toLowerCase() === 's'){ zoom = Math.max(0.25, zoom - 0.1); clampCam(); queueRender(); }
     });
     window.addEventListener('keyup', (e)=>{
         if (e.key === 'Shift') keys.shift = false;
@@ -308,13 +337,18 @@
     // Buttons
     regenBtn.addEventListener('click', ()=>{ if (seedInput.value) seed = Number(seedInput.value) || seed; generate(presetSelect.value); });
     randomBtn.addEventListener('click', ()=>{ seed = Math.floor(Math.random()*1_000_000); seedInput.value = seed; generate(presetSelect.value); });
-    toggleElevMapBtn.addEventListener('click', ()=>{ showElevationMap = !showElevationMap; toggleElevMapBtn.textContent = showElevationMap ? 'Ocultar Mapa Elev' : 'Mapa de Elevación'; draw(); });
+    toggleElevMapBtn.addEventListener('click', ()=>{
+        showElevationMap = !showElevationMap;
+        toggleElevMapBtn.textContent = showElevationMap ? 'Ocultar Mapa Elev' : 'Mapa de Elevación';
+        queueRender();
+    });
     fitMapBtn.addEventListener('click', ()=> fitMap());
     presetSelect.addEventListener('change', ()=> generate(presetSelect.value));
     recalcBiomesBtn.addEventListener('click', ()=>{
         // Recompute biome labels from elevation thresholds of the selected preset; keep manual river/lake flags as overrides
         const preset = (window.mapPresets && window.mapPresets[presetSelect.value]) || window.mapPresets?.normal;
-        const thresholds = preset?.biomeThresholds || { lake: 0.31, beachRounded: 0.32, riverMin: 0.33, riverMax: 0.35, grassMin: 0.35, grassMax: 0.50, forestMin: 0.50, forestMax: 0.60, mountainMin: 0.60, mountainMax: 0.70, snowMin: 0.70 };
+    const thresholds = preset?.biomeThresholds || { lake: 0.31, beachRounded: 0.32, riverMin: 0.33, riverMax: 0.35, grassMin: 0.35, grassMax: 0.50, forestMin: 0.50, forestMax: 0.60, mountainMin: 0.60, mountainMax: 0.70, snowMin: 0.70 };
+    const highBiome = (preset?.id === 'islands') ? 'lava' : 'snow';
         for (let x=0;x<MAP_W;x++){
             for (let y=0;y<MAP_H;y++){
                 const t = tiles[x][y];
@@ -327,10 +361,10 @@
                 if (e >= thresholds.grassMin && e < thresholds.grassMax) { t.biome = 'grassland'; continue; }
                 if (e >= thresholds.forestMin && e < thresholds.forestMax) { t.biome = 'forest'; continue; }
                 if (e >= thresholds.mountainMin && e < thresholds.mountainMax) { t.biome = 'mountain'; continue; }
-                if (e >= thresholds.snowMin) { t.biome = 'snow'; continue; }
+                if (e >= thresholds.snowMin) { t.biome = highBiome; continue; }
             }
         }
-        draw();
+        queueRender();
     });
     recalcHydroBtn.addEventListener('click', ()=>{
         // Build simple flow/accum grid based on current elevations to mark rivers and lakes, akin to map.js
@@ -379,7 +413,7 @@
             tiles[x][y].river = accumulation[x][y] >= accThreshold;
             if (tiles[x][y].river) tiles[x][y].biome = 'river';
         }
-        draw();
+        queueRender();
     });
 
     // Import/Export
@@ -421,7 +455,7 @@
             } else {
                 tiles = data;
             }
-            draw();
+            queueRender();
         } catch (err) {
             alert('Invalid map JSON');
         } finally {
@@ -449,7 +483,7 @@
         canvas.width = width;
         canvas.height = height;
         clampCam();
-        draw();
+        queueRender();
     }
     window.addEventListener('resize', resizeCanvas);
 

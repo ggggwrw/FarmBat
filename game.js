@@ -3,8 +3,8 @@ const gameCanvas = window.canvas || document.getElementById('gameCanvas');
 const ctx = gameCanvas && gameCanvas.getContext ? gameCanvas.getContext('2d') : null;
 
 // Mundo y Camara
-const BASE_TILE = 48; // base tile size in px
-var zoom = 1.0; // zoom factor (1.0 = 100%) - kept for backward compat, but tileSize reads window.zoom
+const BASE_TILE = 48;
+var zoom = 1.0;
 function tileSize() {
 	const z = Number.isFinite(window.zoom) ? window.zoom : zoom;
 	return Math.max(6, Math.round(BASE_TILE * z));
@@ -24,8 +24,7 @@ var seed = Math.floor(Math.random() * 1000000);
 var tiles = [];
 var camX = 0, camY = 0; 
 
-// Expanded mode flag — when true canvas will try to fill most of the window
-// always expanded canvas so the map fills the available area
+
 window.mapExpanded = true;
 
 function resizeCanvasToWindow() {
@@ -33,38 +32,31 @@ function resizeCanvasToWindow() {
 	if (!canvas) return;
 	const sidebar = document.getElementById('gameSidebar');
 	if (window.mapExpanded) {
-		// leave a small margin for HUD (top/bottom)
 		const margin = 48;
 		const leftUsed = (sidebar ? (sidebar.offsetWidth + 18) : 80);
 		canvas.width = Math.max(400, window.innerWidth - leftUsed);
 		canvas.height = Math.max(200, window.innerHeight - margin - 80);
 	} else {
-		// default inline size (keep initial aspect ratio roughly)
 		const leftUsed = (sidebar ? (sidebar.offsetWidth + 18) : 0);
 		canvas.width = Math.max(800, Math.min(1500, Math.floor((window.innerWidth - leftUsed) * 0.95)));
 		canvas.height = Math.max(360, Math.min(900, Math.floor(window.innerHeight * 0.5)));
 	}
-	// update global references and clamp camera
 	if (typeof clampCam === 'function') clampCam();
-	// Auto-fit on resize if enabled
 	if (window.autoFitOnResize) { if (typeof window.fitMap === 'function') window.fitMap(); }
 	if (typeof render === 'function') render();
 }
 
-// Centralized zoom setter to keep window.zoom and internal zoom in sync, with optional anchor re-centering
+// Centralizar zoom
 function setZoom(nextZoom, anchorX = null, anchorY = null) {
 	const canvas = document.getElementById('gameCanvas');
 	if (!canvas) return;
 	const clamped = Math.max(0.25, Math.min(3, Number(nextZoom) || 1));
-	// compute world position under anchor before the change
 	let before = null;
 	if (anchorX !== null && anchorY !== null && typeof screenToWorldFloat === 'function') {
 		before = screenToWorldFloat(anchorX, anchorY);
 	}
-	// apply zoom to both vars
 	zoom = clamped;
 	window.zoom = clamped;
-	// keep the anchor fixed, if provided
 	if (before) {
 		const tNew = tileSize();
 		window.camX = Math.round(before.x * tNew - anchorX);
@@ -74,34 +66,30 @@ function setZoom(nextZoom, anchorX = null, anchorY = null) {
 	if (typeof render === 'function') render();
 }
 
-// Fit the whole map into the current canvas by adjusting zoom and centering camera
 function fitMap() {
 	const canvas = document.getElementById('gameCanvas');
 	if (!canvas) return;
-	const pad = 16; // pixels padding
+	const pad = 16;
 	const availableW = Math.max(100, canvas.width - pad * 2);
 	const availableH = Math.max(100, canvas.height - pad * 2);
 	const tileW = Math.floor(availableW / MAP_W);
 	const tileH = Math.floor(availableH / MAP_H);
 	const bestTile = Math.max(6, Math.min(tileW || 6, tileH || 6));
-	// compute new zoom from tile size
 	const newZoom = bestTile / BASE_TILE;
 	setZoom(newZoom);
-	// center camera
 	const totalW = MAP_W * tileSize();
 	const totalH = MAP_H * tileSize();
-	// center the map in the canvas; allow negative offsets so smaller maps are centered
 	window.camX = Math.round((totalW - canvas.width) / 2);
 	window.camY = Math.round((totalH - canvas.height) / 2);
 	if (typeof clampCam === 'function') clampCam();
 	if (typeof render === 'function') render();
 }
-// Attach resize listener
+
 window.addEventListener('resize', () => {
 	resizeCanvasToWindow();
 });
 
-// expose fitMap only
+
 window.fitMap = fitMap;
 window.setZoom = setZoom;
 
@@ -117,6 +105,7 @@ const BIOMES = {
 	river:     { color: '#8fd1ff' },
 	lake:      { color: '#2a6fb0' },
 	beach:     { color: '#f2e394' },
+	lava:      { color: '#ff4500' },
 };
 
 function worldToScreen(wx, wy) {
@@ -241,18 +230,7 @@ function drawGrid() {
  	}
  	}
  
-// Sombreado de un color hexadecimal
-function shadeColor(hex, amount) {
-	const col = hex.replace('#','');
-	const num = parseInt(col,16);
-	let r = (num >> 16) + amount;
-	let g = ((num >> 8) & 0x00FF) + amount;
-	let b = (num & 0x0000FF) + amount;
-	r = Math.max(0, Math.min(255, r));
-	g = Math.max(0, Math.min(255, g));
-	b = Math.max(0, Math.min(255, b));
-	return '#' + (r<<16 | g<<8 | b).toString(16).padStart(6,'0');
-}
+// (shadeColor removed — unused)
 
 function drawUnit(u) {
 	const p = worldToScreen(u.x, u.y);
@@ -384,8 +362,28 @@ function regenerateMap(newSeed) {
 // inicializar el mapa
 // ensure canvas is sized before first render
 resizeCanvasToWindow();
-regenerateMap(seed);
-// Auto-fit on first load for a better initial view
+// If an imported map was provided (from index.html), use it directly
+let startedFromImported = false;
+try {
+	if (Array.isArray(window.importedMap2D) && Array.isArray(window.importedMap2D[0])) {
+		const w = window.importedMap2D.length;
+		const h = window.importedMap2D[0].length;
+		if (w === MAP_W && h === MAP_H) {
+			tiles = window.importedMap2D;
+			startedFromImported = true;
+			// Mark seed label for exports, etc.
+			seed = 'imported';
+			if (typeof render === 'function') render();
+		} else {
+			console.warn(`Imported map size ${w}x${h} does not match game size ${MAP_W}x${MAP_H}; ignoring.`);
+		}
+	}
+} catch (e) { /* ignore */ }
+
+if (!startedFromImported) {
+	regenerateMap(seed);
+}
+
 if (typeof window.fitMap === 'function') window.fitMap();
 
 // Muestra ui.js que estas funciones existen
@@ -393,7 +391,6 @@ window.regenerateMap = regenerateMap;
 
 // Funciones de ayuda para consola
 window.computeMapStats = computeMapStats;
-window.sampleSeeds = sampleSeeds;
 // export function global
 window.exportMapImage = exportMapImage;
 
@@ -414,24 +411,7 @@ function computeMapStats() {
 	return stats;
 }
 
-// Testeo de semillas
-function sampleSeeds(n=5) {
-	const start = seed;
-	console.group(`Sampling ${n} seeds starting from ${start}`);
-	for (let i=0;i<n;i++){
-		const s = Math.floor(Math.random()*1000000);
-		seed = s;
-		generateMaps();
-		const st = computeMapStats();
-		console.log('seed', s, 'rivers', st.rivers, 'lakes', st.lakes, 'accumMin/max/avg', st.accumMin, st.accumMax, st.accumAvg.toFixed(2));
-	}
-	console.groupEnd();
-	// Regerar el mapa con la semilla original
-	seed = start;
-	generateMaps(); render();
-}
 
 window.computeMapStats = computeMapStats;
-window.sampleSeeds = sampleSeeds;
 
 

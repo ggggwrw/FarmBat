@@ -24,6 +24,20 @@
                 const params = new URLSearchParams(window.location.search);
                 const w = params.get('world') || localStorage.getItem('worldType');
                 if (w) window.worldType = w;
+                // If a map was imported from the home page, expose it now so game.js can pick it up
+                const mapHint = params.get('map');
+                if (mapHint === 'imported') {
+                    try {
+                        const raw = sessionStorage.getItem('importedMap2D');
+                        if (raw) {
+                            const parsed = JSON.parse(raw);
+                            if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
+                                window.importedMap2D = parsed;
+                            }
+                            // Do not clear immediately in case of reload; keep for this tab session
+                        }
+                    } catch (e) { /* ignore */ }
+                }
             } catch (e) { /* ignore */ }
         })();
     </script>
@@ -63,13 +77,16 @@
         <canvas id="gameCanvas" width="1500" height="600" tabindex="0"></canvas>
     </div>
     <div id="legend" aria-hidden="false">
+        <button id="legendCloseBtn" class="icon-btn legend-close" aria-label="Ocultar leyenda" title="Ocultar">×</button>
         <div class="legend-item"><span class="swatch sw-grass"></span>Praderas</div>
         <div class="legend-item"><span class="swatch sw-forest"></span>Bosque</div>
         <div class="legend-item"><span class="swatch sw-mountain"></span>Montañas</div>
         <div class="legend-item"><span class="swatch sw-river"></span>Río</div>
         <div class="legend-item"><span class="swatch sw-lake"></span>Lago</div>
+    <div class="legend-item"><span class="swatch sw-lava"></span>Lava</div>
         <div class="legend-item"><span class="swatch sw-snow"></span>Nieve</div>
     </div>
+    <button id="legendOpenBtn" class="icon-btn legend-open hidden" aria-label="Mostrar leyenda" title="Mostrar">−</button>
 
     <!-- Independent Action Menu Layer (right side) -->
     <div id="actionMenuLayer" aria-hidden="true">
@@ -83,6 +100,8 @@
     <!-- Start menu removed: game opens directly from index.html now -->
 
     <script src="ui.js" defer></script>
+    <script src="preset/normal.js" defer></script>
+    <script src="preset/islands.js" defer></script>
     <script src="map.js" defer></script>
     <script src="game.js" defer></script>
 </body>

@@ -2,57 +2,6 @@
 (function(){
     window.mapPresets = window.mapPresets || {};
 
-    window.mapPresets.normal = {
-        id: 'normal',
-        title: 'Normal',
-        difficulty: 'Easy',
-        riverMult: 0.28,
-        lakeMult: 0.6,
-        forestMult: 0.8,
-        forceElevationBiomes: true,
-        islandMode: false,
-        biomeThresholds: {
-            lake: 0.31,
-            beachRounded: 0.32,
-            riverMin: 0.33,
-            riverMax: 0.35,
-            grassMin: 0.35,
-            grassMax: 0.50,
-            forestMin: 0.50,
-            forestMax: 0.60,
-            mountainMin: 0.60,
-            mountainMax: 0.70,
-            snowMin: 0.70
-        },
-        description: 'Normal gameplay like Civ6 — Easy'
-    };
-
-    window.mapPresets.islands = {
-        id: 'islands',
-        title: 'Islands',
-        difficulty: 'Medium',
-        // islands should have fewer rivers, smaller lakes and slightly fewer forests
-        riverMult: 0.12,
-        lakeMult: 0.45,
-        forestMult: 0.6,
-        forceElevationBiomes: false,
-        islandMode: true,
-        biomeThresholds: {
-            lake: 0.30,
-            beachRounded: 0.32,
-            riverMin: 0.33,
-            riverMax: 0.35,
-            grassMin: 0.34,
-            grassMax: 0.50,
-            forestMin: 0.50,
-            forestMax: 0.60,
-            mountainMin: 0.60,
-            mountainMax: 0.70,
-            snowMin: 0.70
-        },
-        description: 'Naval combat focused — Medium'
-    };
-
     window.getActiveMapPreset = function(){
         const t = (window.worldType || 'normal');
         return window.mapPresets[t] || window.mapPresets.normal;
@@ -108,11 +57,10 @@
         const activePreset = preset || window.getActiveMapPreset();
         const defaultThresholds = { lake: 0.31, beachRounded: 0.32, riverMin: 0.33, riverMax: 0.35, grassMin: 0.35, grassMax: 0.50, forestMin: 0.50, forestMax: 0.60, mountainMin: 0.60, mountainMax: 0.70, snowMin: 0.70 };
         const thresholds = (activePreset && activePreset.biomeThresholds) ? activePreset.biomeThresholds : defaultThresholds;
-        const riverMult = (activePreset && typeof activePreset.riverMult === 'number') ? activePreset.riverMult : 0.28;
-        const lakeMult = (activePreset && typeof activePreset.lakeMult === 'number') ? activePreset.lakeMult : 0.6;
-        const forestMult = (activePreset && typeof activePreset.forestMult === 'number') ? activePreset.forestMult : 0.8;
+    const riverMult = (activePreset && typeof activePreset.riverMult === 'number') ? activePreset.riverMult : 0.28;
+    const lakeMult = (activePreset && typeof activePreset.lakeMult === 'number') ? activePreset.lakeMult : 0.6;
 
-        const presetId = (activePreset && activePreset.id) ? activePreset.id : 'normal';
+    const presetId = (activePreset && activePreset.id) ? activePreset.id : 'normal';
         // defaults
         let octavesElev = 5, scaleElev = 12, elevWeightCenter = 0.5, elevNoiseJitter = 0.08;
         let octavesMoist = 4, scaleMoist = 18;
@@ -271,7 +219,11 @@
                 if (e >= thresholds.grassMin && e < thresholds.grassMax) { t.biome = 'grassland'; t.lake = false; t.river = false; continue; }
                 if (e >= thresholds.forestMin && e < thresholds.forestMax) { t.biome = 'forest'; t.lake = false; t.river = false; continue; }
                 if (e >= thresholds.mountainMin && e < thresholds.mountainMax) { t.biome = 'mountain'; t.lake = false; t.river = false; continue; }
-                if (e >= thresholds.snowMin) { t.biome = 'snow'; t.lake = false; t.river = false; continue; }
+                if (e >= thresholds.snowMin) {
+                    // Use lava at high elevations only for 'islands' preset; otherwise snow
+                    t.biome = (presetId === 'islands') ? 'lava' : 'snow';
+                    t.lake = false; t.river = false; continue;
+                }
             }
         }
 
@@ -316,21 +268,22 @@
             }
         }
 
-        // snow expansion
+        // high-elevation expansion: 'snow' normally, 'lava' for islands
         for (let x=0;x<MAP_W;x++){
             for (let y=0;y<MAP_H;y++){
                 const t = tiles[x][y];
-                if (t.biome !== 'snow'){
-                    let snowNeighbors = 0;
+                const highBiome = (presetId === 'islands') ? 'lava' : 'snow';
+                if (t.biome !== highBiome){
+                    let highNeighbors = 0;
                     for (let ox=-1; ox<=1; ox++){
                         for (let oy=-1; oy<=1; oy++){
                             if (ox===0 && oy===0) continue;
                             const nx = x + ox, ny = y + oy;
                             if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
-                            if (tiles[nx][ny].biome === 'snow') snowNeighbors++;
+                            if (tiles[nx][ny].biome === highBiome) highNeighbors++;
                         }
                     }
-                    if (snowNeighbors >= 2 && t.elevation >= thresholds.snowMin) t.biome = 'snow';
+                    if (highNeighbors >= 2 && t.elevation >= thresholds.snowMin) t.biome = highBiome;
                 }
             }
         }
