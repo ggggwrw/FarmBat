@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmBat — Biblioteca de Mapas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="bibliomap.js" defer></script>
+</head>
+<body class="home-page library-page">
+    <header class="topbar" role="banner">
+        <div class="brand">FarmBat</div>
+        <nav class="nav-actions" aria-label="Principal">
+            <a href="game.html" class="btn primary" id="playBtn">Jugar</a>
+            <a href="map-editor.html" class="btn" id="editorBtn">Editor de Mapas</a>
+            <a href="bibliomap.html" class="btn" aria-current="page" id="biblioBtn">Biblioteca</a>
+            <input id="importStartFile" type="file" accept="application/json" style="display:none" />
+        </nav>
+    </header>
+
+    <main class="home-wrap" aria-label="Biblioteca de Mapas">
+        <section aria-label="Mapas disponibles">
+            <div style="display:flex; align-items:center; justify-content: space-between; margin: 6px 0 12px; gap: 10px;">
+                <h2 style="font-size:16px; letter-spacing:.2px;">Biblioteca de Mapas</h2>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <button id="importLocalBtn" class="btn">Importar archivo…</button>
+                    <input id="importLocalFile" type="file" accept="application/json" style="display:none" />
+                    <button id="addToPoolBtn" class="btn">Añadir al pool…</button>
+                    <input id="addToPoolFile" type="file" accept="application/json" style="display:none" />
+                </div>
+            </div>
+            <div id="libraryGrid" class="world-grid" role="list"></div>
+            <div id="libraryEmpty" class="changelog-box" style="display:none; margin-top:12px;">
+                No se encontraron mapas en la carpeta <code>Mapas/</code> o no se pudo acceder. Puedes usar “Importar archivo…” para cargar un JSON local.
+            </div>
+        </section>
+    </main>
+
+    
+
+    <footer class="site-footer" role="contentinfo">
+        <p>&copy; 2025 FarmBat. Todos los derechos reservados.</p>
+    </footer>
+</body>
+</html>

@@ -1,11 +1,10 @@
-// preset/islands.js - Islands map preset
+
 (function(){
     window.mapPresets = window.mapPresets || {};
     window.mapPresets.islands = {
         id: 'islands',
         title: 'Islands',
         difficulty: 'Medium',
-        // islands should have fewer rivers, smaller lakes and slightly fewer forests
         riverMult: 0.12,
         lakeMult: 0.45,
         forestMult: 0.6,
